@@ -1,0 +1,35 @@
+{
+  "id": "starter-plugin",
+  "name": "Starter Plugin Template",
+  "version": "1.0.0",
+  "description": "A template for creating new Claude Code plugins",
+  "author": "Your Name",
+  "repository": "https://github.com/yourusername/starter-plugin",
+  "license": "MIT",
+  "tags": [
+    "template",
+    "starter",
+    "example"
+  ],
+  "commands": [
+    {
+      "name": "example",
+      "description": "An example command that demonstrates basic functionality",
+      "parameters": [
+        {
+          "name": "input",
+          "type": "string",
+          "description": "Sample input parameter",
+          "required": true
+        },
+        {
+          "name": "verbose",
+          "type": "boolean",
+          "description": "Enable verbose output",
+          "required": false,
+          "default": false
+        }
+      ]
+    }
+  ]
+}
