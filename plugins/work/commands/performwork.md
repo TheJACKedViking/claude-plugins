@@ -17,6 +17,29 @@ Follow these phases to execute the issue correctly:
 
 ---
 
+## Status Management Guide
+
+**Available Linear Workflow States:**
+
+This command automatically manages issue status transitions throughout execution:
+
+| Status | When Set | Purpose |
+|--------|----------|---------|
+| **In Progress** | Phase 0.5 - After successful issue fetch | Signals work has started |
+| **On Hold** | Phase 2 - When blocking dependencies discovered | Indicates waiting for prerequisites |
+| **In Review** | Phase 2.5 - After implementation completes | Optional: Ready for validation |
+| **Duplicate** | Phase 0.2 - If duplicate issue detected | Marks redundant issues |
+| **Cancelled** | Error handling - Fatal errors or user cancellation | Work abandoned |
+| **Done** | Phase 4.2 - All requirements met and validated | Work complete |
+
+**Status Update Behavior:**
+- All status updates are **non-fatal** - if update fails, work continues with warning
+- Status names are fetched from team configuration for accuracy
+- User is notified of each status change
+- Failed updates are logged but don't block execution
+
+---
+
 ## Phase 0: Fetch Issue from Linear
 
 1. **Fetch the issue using Linear MCP tools:**
@@ -39,6 +62,52 @@ Follow these phases to execute the issue correctly:
    - Look for "## 📋 Requirements" section
    - Extract all checkboxes and bullet points
    - If no requirements found, report: "⚠️ No clear requirements found in issue description. Proceeding with title as requirement."
+
+5. **Fetch available workflow states (for accurate status updates):**
+   ```
+   Tool: mcp__linear__list_issue_statuses
+   Parameters:
+     team: [team ID or team name from issue]
+   ```
+   - Store available state names for later use
+   - Note exact capitalization (e.g., "In Progress" vs "In-Progress")
+   - **If fetch fails:** Continue with default state names (non-fatal)
+
+6. **Check for duplicate issue (optional but recommended):**
+
+   **When to check:** If issue title/description suggests potential duplication.
+
+   a. **Use Sequential-thinking to analyze duplication risk:**
+      - Thought: "Analyzing issue {{issueId}}: '[title]'. Description: '[summary]'. I need to determine: 1) Does this seem like it might duplicate recent work? 2) What search terms would find similar issues? 3) Should I check for duplicates before starting work?"
+      - thoughtNumber: 1
+      - totalThoughts: 4
+      - nextThoughtNeeded: true
+
+   b. **If Sequential-thinking suggests checking:**
+      - Search recent issues using `mcp__linear__list_issues` with relevant query
+      - Compare titles, descriptions, requirements
+      - Calculate similarity score
+
+   c. **If duplicate found (>80% similar):**
+      ```
+      Tool: mcp__linear__update_issue
+      Parameters:
+        id: "{{issueId}}"
+        state: "Duplicate"
+      ```
+      - Add comment explaining which issue this duplicates
+      - Report: "🔗 Issue {{issueId}} is a duplicate of [ISSUE-ID]. Marked as Duplicate."
+      - **STOP execution**
+
+7. **Update issue status to In Progress:**
+   ```
+   Tool: mcp__linear__update_issue
+   Parameters:
+     id: "{{issueId}}"
+     state: "In Progress"  # Use exact state name from step 5
+   ```
+   - Display: "▶️ Issue {{issueId}} status updated to 'In Progress'"
+   - **Error handling:** If update fails, display warning but continue execution (non-blocking)
 
 ---
 
@@ -105,6 +174,34 @@ Research mode: FOCUSED INVESTIGATION MODE"
    - Risks: [list]
    - Research needed: [yes/no]
    ```
+
+### Parallel Agent Execution for Efficiency
+
+**When to run agents in parallel:**
+- Research-expert AND code exploration are both needed (independent concerns)
+- Research-expert for unfamiliar technology AND Sequential-thinking for implementation strategy
+- Multiple research tasks on different technologies/APIs
+
+**How to launch agents in parallel:**
+```
+Launch multiple agents in parallel by using multiple Task tool calls in a single message:
+
+Task 1: research-expert agent
+Prompt: "Research [technology A] for implementing [feature X]..."
+
+Task 2: research-expert agent
+Prompt: "Research [technology B] for implementing [feature Y]..."
+```
+
+**Benefits:**
+- Reduces total execution time by 40-60%
+- Gathers information faster for complex issues
+- Enables better-informed implementation decisions
+
+**When NOT to use parallel execution:**
+- Agents need sequential coordination (one depends on the other's output)
+- Single agent can handle all concerns
+- Risk of duplicate or conflicting work
 
 ---
 
@@ -251,15 +348,180 @@ Once code discovery is complete using Serena MCP, proceed to Phase 2: Implementa
 
 2. **Use Sequential-thinking to decide if it should be a separate issue:**
 
-   - Thought: "During implementation of {{issueId}}, I discovered: '[discovery description]'. I need to determine: 1) Is this within scope of current issue or separate? 2) Is it blocking current work? 3) What priority should it have? 4) Should I fix it now or create a tracking issue?"
+   - Thought: "During implementation of {{issueId}}, I discovered: '[discovery description]'. I need to determine: 1) Is this within scope of current issue or separate? 2) Is it blocking current work? 3) What priority should it have? 4) Should I fix it now or create a tracking issue? 5) Should the current issue be put 'On Hold' while waiting for this?"
    - thoughtNumber: 1
-   - totalThoughts: 5
+   - totalThoughts: 6
    - nextThoughtNeeded: true
 
 3. **If separate issue needed:**
    - Use the `/work:creatework` slash command to create it
    - Provide clear description of the discovered issue
    - Link it to the current issue in your summary
+
+4. **If discovery is blocking (requires completion before current work can proceed):**
+
+   a. **Update current issue status to "On Hold":**
+      ```
+      Tool: mcp__linear__update_issue
+      Parameters:
+        id: "{{issueId}}"
+        state: "On Hold"
+      ```
+
+   b. **Add comment to current issue:**
+      ```
+      Tool: mcp__linear__create_comment
+      Parameters:
+        issueId: "{{issueId}}"
+        body: "⏸️ Work paused - blocked by [BLOCKER-ISSUE-ID]: [description of blocker]"
+      ```
+
+   c. **Report to user:**
+      - "⏸️ Issue {{issueId}} status updated to 'On Hold'"
+      - "Blocked by: [BLOCKER-ISSUE-ID]"
+      - "Will resume when blocker is resolved"
+
+   d. **STOP execution:**
+      - Do not proceed with implementation
+      - Wait for blocker to be resolved
+
+---
+
+## Phase 2.3: TypeScript/JavaScript Code Review by Expert (MANDATORY)
+
+**IMPORTANT: ALL TypeScript/JavaScript code changes MUST be reviewed and refined by typescript-expert. NO EXCEPTIONS.**
+
+**Purpose:** Ensure all TypeScript/JavaScript code meets best practices, type safety, performance, and code quality standards before validation.
+
+### When This Phase Applies
+
+Run this phase if ANY of the following file types were modified:
+- `.ts` (TypeScript)
+- `.tsx` (TypeScript React)
+- `.js` (JavaScript)
+- `.jsx` (JavaScript React)
+- `.mjs` / `.cjs` (ES Modules / CommonJS)
+- `.vue` (if contains TypeScript/JavaScript)
+
+### Step 1: Identify Changed Files
+
+1. **List all TypeScript/JavaScript files modified in Phase 2:**
+   ```bash
+   git diff --name-only
+   ```
+
+2. **If NO TypeScript/JavaScript files changed:**
+   - Skip to Phase 2.5 (Update Status to "In Review")
+
+3. **If TypeScript/JavaScript files changed:**
+   - Continue to Step 2
+
+### Step 2: Launch typescript-expert for Code Review
+
+**Use the typescript-expert agent to review and refine ALL changes:**
+
+```
+Launch TypeScript Expert agent using Task tool:
+
+Agent: typescript-expert
+Task: "Review and refine all TypeScript/JavaScript code changes for issue {{issueId}}.
+
+Modified files:
+[List all .ts/.tsx/.js/.jsx files changed]
+
+Requirements:
+1. Review each file for type safety, best practices, and code quality
+2. Refine or rewrite code to meet TypeScript/JavaScript excellence standards
+3. Ensure proper error handling and edge case coverage
+4. Optimize performance where applicable
+5. Add/improve JSDoc comments for complex logic
+6. Verify proper use of TypeScript features (generics, utility types, etc.)
+7. Check for common anti-patterns and code smells
+
+Please implement all improvements directly. Report any architectural concerns that require separate issues."
+```
+
+### Step 3: Wait for typescript-expert Completion
+
+- Agent will review all changed files
+- Agent will implement refinements and improvements
+- Agent will report findings and changes made
+
+### Step 4: Review typescript-expert Report
+
+**typescript-expert should provide:**
+1. **Summary of changes made:**
+   - Type safety improvements
+   - Best practice refinements
+   - Performance optimizations
+   - Code quality enhancements
+
+2. **Architectural concerns (if any):**
+   - Issues requiring separate work
+   - Technical debt identified
+   - Recommendations for future improvements
+
+3. **Files modified by typescript-expert:**
+   - List of files refined
+   - Summary of changes per file
+
+### Step 5: Create Tracking Issues for Architectural Concerns
+
+**If typescript-expert identified architectural issues:**
+
+1. **For each architectural concern:**
+   - Use `/work:creatework` to create a tracking issue
+   - Description: Clear explanation of the concern and recommended solution
+   - Link to current issue {{issueId}}
+
+2. **Report tracking issues created:**
+   ```
+   📋 Architectural Concerns:
+   - [ISSUE-ID]: [concern description]
+   - [ISSUE-ID]: [concern description]
+   ```
+
+### Output from This Phase
+
+After typescript-expert review, you should have:
+- ✅ All TypeScript/JavaScript code reviewed and refined by expert
+- ✅ Type safety and best practices enforced
+- ✅ Code quality improvements implemented
+- ✅ Tracking issues created for architectural concerns
+- ✅ Clear report of changes made
+
+**Proceed to Phase 2.5 after typescript-expert review is complete.**
+
+---
+
+## Phase 2.5: Update Status to "In Review" (Optional)
+
+**Purpose:** Signal that implementation is complete and ready for validation.
+
+**When to use:** If your team workflow includes an "In Review" state before validation.
+
+1. **After completing implementation (Phase 2):**
+
+   - All code changes implemented
+   - No known blocking issues
+   - Ready for type checking and testing
+
+2. **Update issue status:**
+   ```
+   Tool: mcp__linear__update_issue
+   Parameters:
+     id: "{{issueId}}"
+     state: "In Review"  # Use exact state name from Phase 0 step 5
+   ```
+
+3. **If update succeeds:**
+   - Report: "👀 Issue {{issueId}} status updated to 'In Review'"
+
+4. **If update fails:**
+   - Log warning: "⚠️ Could not update issue status to 'In Review': [error]"
+   - Continue execution anyway (non-fatal)
+
+5. **Proceed to Phase 3: Validation**
 
 ---
 
@@ -309,6 +571,59 @@ Once code discovery is complete using Serena MCP, proceed to Phase 2: Implementa
    ❌ [N] tests failed
    ```
 
+### 3.3 Run Linting (MANDATORY)
+
+**Purpose:** Ensure code quality, style consistency, and adherence to coding standards.
+
+1. **Determine the linting command:**
+   - Check package.json for lint-related scripts
+   - Common commands: `npm run lint`, `eslint .`, `prettier --check .`
+   - Try multiple commands if needed:
+     ```bash
+     npm run lint
+     # OR
+     npx eslint .
+     # OR
+     npx prettier --check .
+     ```
+
+2. **Run linting using Bash tool:**
+   ```bash
+   npm run lint
+   # OR combination:
+   npm run lint && npm run format:check
+   ```
+
+3. **Capture the output:**
+   - Count total errors vs warnings
+   - Identify error types (style violations, best practices, security issues)
+   - Group by file and severity
+   - Note auto-fixable vs manual-fix required
+
+4. **Display results:**
+   ```
+   🔍 Linting Results:
+   - Total errors: [N]
+   - Total warnings: [N]
+   - Files with issues: [N]
+   - Auto-fixable: [N]
+   - Manual fixes needed: [N]
+   - Common violations: [list top 3-5 rule violations]
+   ```
+
+5. **If no linting tools configured:**
+   - Report: "⚠️ No linting configuration found (no eslint, prettier, or lint scripts)"
+   - Suggest: "Consider adding ESLint and Prettier for code quality"
+   - **Continue to Phase 3.5** (non-blocking if linting not configured)
+
+6. **If linting passes (0 errors, warnings OK):**
+   - Report: "✅ Linting passed"
+   - **Continue to Phase 3.5**
+
+7. **If linting fails (errors found):**
+   - Report errors with counts
+   - **Continue to Phase 3.7 for error resolution** (after Phase 3.5)
+
 ---
 
 ## Phase 3.5: Type Error Resolution (MANDATORY)
@@ -347,7 +662,9 @@ Once code discovery is complete using Serena MCP, proceed to Phase 2: Implementa
    - General TypeScript issues
    - Unsure which specialist to use
 
-**Step 2: Invoke appropriate TypeScript agent**
+**Step 2: Invoke appropriate TypeScript agent(s)**
+
+### Option A: Single Agent (Errors in one category)
 
 1. **For type system errors (use typescript-type-expert):**
 
@@ -397,6 +714,37 @@ Once code discovery is complete using Serena MCP, proceed to Phase 2: Implementa
 
    Please provide fixes and implement them where possible."
    ```
+
+### Option B: Multiple Agents in Parallel (Errors in multiple categories)
+
+**When to use parallel execution:**
+- Type system errors in frontend files AND module resolution errors in backend files
+- Distinct error categories affecting independent file sets
+- Different error types that don't conflict (e.g., TS2xxx in src/ and TS2307 in tests/)
+
+**How to launch agents in parallel:**
+
+```
+Launch multiple TypeScript agents in parallel by using multiple Task tool calls in a single message:
+
+Task 1: typescript-type-expert
+Prompt: "Fix type system errors in frontend files:
+[List type errors from src/components/, src/views/, etc.]"
+
+Task 2: typescript-build-expert
+Prompt: "Fix module resolution errors in backend files:
+[List module errors from api/, server/, etc.]"
+```
+
+**Benefits of parallel execution:**
+- Reduces resolution time by 50-70%
+- Allows specialists to work on their domain simultaneously
+- Faster issue completion
+
+**When NOT to use parallel execution:**
+- Errors span the same files (agents would conflict)
+- One error category dominates (>80% of errors)
+- Errors are likely related (fixing one might fix others)
 
 **Step 3: Wait for agent completion**
 
@@ -467,6 +815,154 @@ Once code discovery is complete using Serena MCP, proceed to Phase 2: Implementa
 
 ---
 
+## Phase 3.7: Linting Error Resolution (MANDATORY)
+
+**If linting errors exist from Phase 3.3, they MUST be addressed before marking issue as complete.**
+
+### 3.7.1 Analyze Linting Errors with linting-expert
+
+**Step 1: Categorize linting errors**
+
+1. **Separate errors by severity and type:**
+   - **Errors** (must fix): Rule violations that block code quality
+   - **Warnings** (should fix): Suggestions that improve code
+   - **Style issues**: Formatting, naming conventions
+   - **Best practice issues**: Code patterns, complexity
+   - **Security issues**: Potential vulnerabilities
+   - **Auto-fixable**: Can be fixed with `--fix` flag
+
+2. **Count and prioritize:**
+   - Total errors vs warnings
+   - Most common rule violations
+   - Files with most issues
+   - Security-critical vs style-only
+
+**Step 2: Attempt auto-fix first**
+
+1. **Try auto-fix if available:**
+   ```bash
+   npm run lint -- --fix
+   # OR
+   npx eslint . --fix
+   # OR
+   npx prettier --write .
+   ```
+
+2. **Re-run linting after auto-fix:**
+   ```bash
+   npm run lint
+   ```
+
+3. **Report auto-fix results:**
+   ```
+   🔧 Auto-Fix Results:
+   - Errors before: [N]
+   - Errors after: [N]
+   - Fixed automatically: [N]
+   - Remaining manual fixes: [N]
+   ```
+
+4. **If all errors fixed:**
+   - Report: "✅ All linting errors resolved via auto-fix"
+   - Skip to Phase 4 (Documentation)
+
+5. **If errors remain:**
+   - Continue to Step 3
+
+**Step 3: Launch linting-expert for manual fixes**
+
+```
+Launch Linting Expert agent using Task tool:
+
+Agent: linting-expert
+Task: "Analyze and fix these linting errors:
+
+[Paste top 15-20 linting errors with file names, line numbers, and rule names]
+
+Context:
+- Project: [brief description]
+- Linting tools: [ESLint/Prettier/other]
+- Severity breakdown: [N] errors, [N] warnings
+
+Please:
+1. Categorize errors by type (style, best practice, security)
+2. Implement fixes for all errors
+3. Explain the reasoning for non-obvious fixes
+4. Update linting configuration if rules are overly strict
+5. Create tracking issues for architectural problems using /work:creatework
+6. Re-run linting after fixes
+
+Priority: Fix all ERROR-level issues. Fix WARNING-level if straightforward."
+```
+
+**Step 4: Wait for linting-expert completion**
+
+- Agent will analyze errors
+- Agent will implement fixes
+- Agent will adjust configuration if needed
+- Agent will re-run linting
+- Agent will report results
+
+**Step 5: Parse linting-expert results**
+
+Expected from linting-expert:
+1. **Fixes implemented:**
+   - Style fixes applied
+   - Best practice improvements
+   - Security issues resolved
+   - Configuration adjustments
+
+2. **Remaining issues (if any):**
+   - Issues requiring architectural changes
+   - Rule configuration conflicts
+   - Complex refactoring needed
+
+3. **Files modified:**
+   - Code files fixed
+   - Config files updated (.eslintrc, .prettierrc, etc.)
+
+### 3.7.2 Re-check After Fixes
+
+1. **Run linting again:**
+   ```bash
+   npm run lint
+   ```
+
+2. **If errors remain:**
+   - Document which errors were fixed
+   - Document which errors remain and why
+   - Create tracking issues for remaining errors using `/work:creatework`
+
+3. **Report final linting status:**
+   ```
+   📊 Linting Error Resolution:
+   - Initial errors: [N]
+   - Fixed by auto-fix: [N]
+   - Fixed by linting-expert: [N]
+   - Remaining: [N]
+   - Tracking issues created: [list issue IDs]
+   ```
+
+### 3.7.3 Configuration Improvements
+
+**If linting-expert suggested configuration changes:**
+
+1. **Review suggested changes:**
+   - Rule adjustments (.eslintrc, .prettierrc)
+   - New plugins or parsers
+   - Ignore patterns
+
+2. **Apply reasonable changes:**
+   - Use Edit tool to update config files
+   - Document why changes were made
+
+3. **Do NOT disable rules without justification:**
+   - Never disable security rules
+   - Never disable best practice rules without team approval
+   - Style rules can be adjusted for project preferences
+
+---
+
 ## Phase 4: Documentation and Linear Update
 
 ### 4.1 Prepare Completion Summary
@@ -486,8 +982,13 @@ Once code discovery is complete using Serena MCP, proceed to Phase 2: Implementa
 - Added: [list files if any]
 - Deleted: [list files if any]
 
+### Code Quality Review
+- TypeScript/JavaScript review by typescript-expert: [✅ Complete / ⚠️ Skipped (no TS/JS changes)]
+- Changes by expert: [list improvements made]
+
 ### Validation Results
 - Type check: [✅ Pass / ❌ [N] errors remaining]
+- Linting: [✅ Pass / ❌ [N] errors remaining]
 - Tests: [✅ Pass / ⚠️ Not run / ❌ [N] failures]
 
 ### Discoveries
@@ -501,24 +1002,48 @@ Once code discovery is complete using Serena MCP, proceed to Phase 2: Implementa
 ### 4.2 Update Linear Issue
 
 1. **Add comment to Linear issue with summary:**
-   - Use Linear MCP tool to create comment
-   - Include the completion summary
+   ```
+   Tool: mcp__linear__create_comment
+   Parameters:
+     issueId: "{{issueId}}"
+     body: "[Paste the completion summary from Phase 4.1]"
+   ```
 
 2. **Update issue state (ONLY if all requirements met):**
 
    **Criteria to mark as "Done":**
    - ✅ All requirements completed
+   - ✅ TypeScript/JavaScript code reviewed by typescript-expert (if TS/JS changes made)
    - ✅ Type check passing OR tracking issues created for remaining errors
+   - ✅ Linting passing OR tracking issues created for remaining errors
    - ✅ Tests passing (if tests exist)
    - ✅ No blocking discoveries
 
-   **If criteria met:**
-   - Update issue state to "Done"
-   - Report: "✅ Issue {{issueId}} marked as Done"
+   **If ALL criteria met:**
+
+   a. **Update issue status to "Done":**
+      ```
+      Tool: mcp__linear__update_issue
+      Parameters:
+        id: "{{issueId}}"
+        state: "Done"  # Use exact state name from Phase 0 step 5
+      ```
+
+   b. **If update succeeds:**
+      - Report: "✅ Issue {{issueId}} marked as 'Done'"
+      - Display completion metrics
+
+   c. **If update fails:**
+      - Log warning: "⚠️ Could not update issue status to 'Done': [error]"
+      - Report: "⚠️ Please manually update issue status to Done"
+      - Continue anyway (non-fatal)
 
    **If criteria NOT met:**
-   - Keep current state or move to "In Progress"
-   - Report: "⚠️ Issue remains open due to: [reasons]"
+   - **Keep current state** (should be "In Progress" or "In Review")
+   - Report: "⚠️ Issue {{issueId}} remains in current state due to:"
+     - List which criteria were not met
+     - Explain what needs to be resolved
+   - **Do NOT update status to Done**
 
 ---
 
@@ -533,7 +1058,9 @@ Display comprehensive report:
 
 📋 Requirements: [N/M completed]
 🔧 Files Modified: [N]
+👨‍💻 TypeScript Expert Review: [✅ Complete / ⚠️ N/A]
 ✅ Type Check: [status]
+🎨 Linting: [status]
 🧪 Tests: [status]
 🔍 Discoveries: [N issues created]
 
@@ -550,17 +1077,76 @@ Display comprehensive report:
 - Report: "❌ Linear MCP server is not connected. Cannot fetch or update issue."
 - Display what work was attempted
 - Suggest manual Linear update
+- **Do NOT attempt status updates** (will fail anyway)
 
 ### If typecheck fails to run:
 - Report: "⚠️ Could not run type checking. Tried: [commands]"
 - Suggest: "Please verify npm packages are installed and typecheck script exists"
 - Continue with other validation if possible
+- **Do NOT mark as Done** (type checking is mandatory)
 
-### If implementation fails:
-- Document what was attempted
-- Create detailed error report
-- Add comment to Linear issue with failure details
-- Do NOT mark issue as Done
+### If linting fails to run:
+- Report: "⚠️ Could not run linting. Tried: [commands]"
+- Suggest: "Please verify linting tools are installed (ESLint, Prettier) and lint script exists"
+- Continue with other validation if possible
+- **Do NOT mark as Done IF linting is configured** (linting is mandatory when configured)
+
+### If implementation fails (non-recoverable errors):
+
+1. **Document the failure:**
+   - What was attempted
+   - What went wrong
+   - Stack traces or error messages
+   - Files that were partially modified
+
+2. **Use Sequential-thinking to assess severity:**
+
+   - Thought: "Implementation of {{issueId}} failed with: '[error description]'. I need to determine: 1) Is this recoverable? 2) Should work be cancelled or just paused? 3) What information does the team need? 4) What cleanup is needed?"
+   - thoughtNumber: 1
+   - totalThoughts: 4
+   - nextThoughtNeeded: true
+
+3. **If work should be cancelled (unrecoverable):**
+
+   a. **Update issue status to "Cancelled":**
+      ```
+      Tool: mcp__linear__update_issue
+      Parameters:
+        id: "{{issueId}}"
+        state: "Cancelled"
+      ```
+
+   b. **Add detailed comment with failure details:**
+      ```
+      Tool: mcp__linear__create_comment
+      Parameters:
+        issueId: "{{issueId}}"
+        body: "❌ Implementation cancelled due to: [error description]
+
+        ## What was attempted:
+        - [list attempts]
+
+        ## Error encountered:
+        ```
+        [error details]
+        ```
+
+        ## Files modified:
+        - [list files - may need cleanup]
+
+        ## Recommendation:
+        [what should be done to resolve]"
+      ```
+
+   c. **Report to user:**
+      - "❌ Issue {{issueId}} marked as 'Cancelled'"
+      - "Reason: [error description]"
+      - "Details added to Linear issue"
+
+4. **If work should be paused (recoverable with user intervention):**
+   - Leave status as "In Progress"
+   - Add comment with error details
+   - Request user guidance
 
 ---
 
@@ -600,20 +1186,27 @@ Example: `/work:performwork TRG-123,TRG-124,TRG-125`
 ## Configuration
 
 **Default behavior:**
+- TypeScript/JavaScript code review by typescript-expert: MANDATORY for all TS/JS changes (NO EXCEPTIONS)
 - Type checking: MANDATORY (cannot skip)
+- Linting: MANDATORY (cannot skip if linting configured)
 - Test running: Recommended but optional if tests don't exist
-- Auto-fix: Enabled for trivial errors (unused imports, variables)
+- Auto-fix: Enabled for trivial errors (unused imports, variables, linting auto-fixable)
 - Discovery tracking: Automatic via /creatework command
+- Parallel agent execution: Encouraged for independent concerns (research, TypeScript errors in different file sets)
 
 ---
 
 ## Notes
 
+- **MANDATORY typescript-expert review:** ALL TypeScript/JavaScript code MUST be reviewed and refined by typescript-expert (NO EXCEPTIONS)
 - **MANDATORY type checking:** Type errors must be addressed before marking Done
+- **MANDATORY linting:** Linting errors must be addressed before marking Done (when linting configured)
+- **Parallel agent execution:** Run independent agents simultaneously for 40-60% faster execution
 - **Truthful documentation:** Never claim something works if it doesn't
 - **Discovery tracking:** Always create separate issues for out-of-scope work
 - **Use /creatework:** For ALL issue creation to ensure deduplication
 - **Sequential-thinking integration:** Used at 8+ decision points for quality
+- **Specialized agents:** TypeScript agents (type-expert, build-expert, expert), linting-expert, research-expert
 
 ---
 
