@@ -2,478 +2,317 @@
 description: Initialize Linear workspace with batch operations, error recovery, and comprehensive configuration
 ---
 
-# /linear-setup - Robust Workspace Configuration
+# Linear Setup - Executable Instructions
 
-Initialize Linear workspace with intelligent batch operations, error recovery, and comprehensive setup.
+**Your task:** Initialize and configure the Linear workspace for optimal use with the work plugin commands.
 
-## System Initialization
+## Instructions
 
-```javascript
-// Initialize enterprise systems
-const systems = {
-  batch: new BatchOperations(),
-  errorRecovery: new ErrorRecoverySystem(),
-  performance: new PerformanceMonitor(),
-  checkpoint: new CheckpointSystem(),
-  validation: new SetupValidator()
-};
+---
 
-// Configuration with extended label sets
-const config = {
-  team: "The Reiss Group",
-  retryAttempts: 3,
-  batchSize: 5,
-  validateExisting: true,
-  updateOutdated: true
-};
+## Phase 1: Verify Linear MCP Connection
+
+1. **Check Linear MCP status:**
+   - Use `ListMcpResourcesTool` to check for Linear MCP server
+   - Verify it's in the connected servers list
+
+2. **If Linear MCP not connected:**
+   ```
+   ❌ Linear MCP Server Not Connected!
+
+   Cannot proceed with Linear setup without MCP connection.
+
+   Please:
+   1. Configure Linear MCP server in Claude Code settings
+   2. Add Linear API key to environment
+   3. Restart Claude Code
+   4. Run this command again
+
+   See /work:diagnostic for detailed MCP setup instructions.
+   ```
+   - STOP execution
+
+3. **If connected:**
+   ```
+   ✅ Linear MCP server connected
+   ```
+
+---
+
+## Phase 2: Discover Linear Workspace
+
+1. **Fetch Linear workspace information:**
+   - Use Linear MCP tools to get workspace details
+   - Common tools: `mcp__linear__get_viewer`, `mcp__linear__get_organization`
+
+2. **Fetch available teams:**
+   - List all teams in the workspace
+   - Common tool: `mcp__linear__list_teams`
+
+3. **Display workspace info:**
+   ```
+   📊 Linear Workspace Information:
+   - Organization: [name]
+   - Teams: [N] teams found
+     - [Team 1 name] (ID: [id])
+     - [Team 2 name] (ID: [id])
+     ...
+   - User: [current user name/email]
+   ```
+
+4. **Identify "The Reiss Group" team:**
+   - Look for team with name "The Reiss Group"
+   - Store the team ID for later use
+
+5. **If team not found:**
+   ```
+   ⚠️ "The Reiss Group" team not found in workspace
+
+   Available teams:
+   - [Team 1]
+   - [Team 2]
+   ...
+
+   Please verify team name or update commands to use correct team.
+   ```
+
+---
+
+## Phase 3: Test Issue Operations
+
+1. **Test issue listing:**
+   - Attempt to list recent issues
+   - Common tool: `mcp__linear__list_issues` with limit=5
+
+2. **Display recent issues:**
+   ```
+   📋 Recent Issues (last 5):
+   1. [ID] - [Title] ([State])
+   2. [ID] - [Title] ([State])
+   ...
+   ```
+
+3. **If listing fails:**
+   - Report error details
+   - Check API key permissions
+   - Suggest verifying Linear API token scopes
+
+---
+
+## Phase 4: Test Issue Creation
+
+1. **Create a test issue:**
+   - Team: The Reiss Group (or first available team)
+   - Title: "Test issue from Linear setup"
+   - Description: "This is a test issue created by /work:linear-setup command to verify issue creation works."
+   - Use tool: `mcp__linear__create_issue` or similar
+
+2. **If creation succeeds:**
+   ```
+   ✅ Test issue created successfully!
+   - Issue ID: [ID]
+   - URL: [url]
+
+   You can delete this test issue manually if needed.
+   ```
+
+3. **If creation fails:**
+   ```
+   ❌ Failed to create test issue
+
+   Error: [error message]
+
+   Possible causes:
+   - Insufficient API permissions
+   - Team ID incorrect
+   - MCP tool naming mismatch
+
+   The creatework command may not work properly.
+   ```
+
+---
+
+## Phase 5: Test Comment Creation
+
+1. **Add comment to test issue:**
+   - Use the test issue ID from Phase 4
+   - Comment: "Test comment from Linear setup - verifying comment creation works."
+   - Use tool: `mcp__linear__create_comment` or similar
+
+2. **If succeeds:**
+   ```
+   ✅ Comment creation works
+   ```
+
+3. **If fails:**
+   ```
+   ⚠️ Comment creation failed
+
+   This may impact performwork command's ability to update issues.
+   Error: [error message]
+   ```
+
+---
+
+## Phase 6: Discover Issue States
+
+1. **Fetch available workflow states:**
+   - Common states: Backlog, Todo, In Progress, Done, Canceled
+   - Use tool: `mcp__linear__list_workflow_states` or query from team
+
+2. **Display states:**
+   ```
+   🔄 Available Workflow States:
+   - [State 1] (ID: [id])
+   - [State 2] (ID: [id])
+   - [State 3] (ID: [id])
+   ...
+   ```
+
+3. **Identify key states:**
+   - "Backlog" or "Todo" (for new issues)
+   - "In Progress" (for active work)
+   - "Done" (for completed work)
+
+---
+
+## Phase 7: Test Sequential-thinking Integration
+
+1. **Test Sequential-thinking MCP:**
+   - Attempt a simple Sequential-thinking call:
+
+   - Thought: "Testing Sequential-thinking MCP integration for Linear setup. This is a simple test to verify the tool is working correctly. I should confirm the tool responds and returns valid output."
+   - thoughtNumber: 1
+   - totalThoughts: 2
+   - nextThoughtNeeded: true
+
+2. **If works:**
+   ```
+   ✅ Sequential-thinking MCP working
+
+   This enables intelligent requirement extraction and duplicate detection.
+   ```
+
+3. **If fails:**
+   ```
+   ⚠️ Sequential-thinking MCP not available
+
+   Impact:
+   - creatework will work but with reduced intelligence
+   - performwork will work but without smart error analysis
+
+   Commands will fall back to pattern-based logic.
+   ```
+
+---
+
+## Phase 8: Configuration Summary
+
+**Generate setup report:**
+
+```
+═══════════════════════════════════════════════════════════
+✅ LINEAR SETUP COMPLETE
+═══════════════════════════════════════════════════════════
+
+Connection Status:
+  📡 Linear MCP: ✅ Connected
+  🧠 Sequential-thinking: [✅ Working / ⚠️ Unavailable]
+
+Workspace Configuration:
+  🏢 Organization: [name]
+  👥 Team: [The Reiss Group / or first team]
+  👤 User: [name/email]
+
+Verified Capabilities:
+  📋 List Issues: [✅ / ❌]
+  ➕ Create Issues: [✅ / ❌]
+  💬 Add Comments: [✅ / ❌]
+  🔄 Update States: [✅ Not tested / ❌]
+
+Test Issue Created:
+  🔗 [Issue URL]
+  (You can safely delete this test issue)
+
+─────────────────────────────────────────────────────────────
+
+Ready to Use:
+  ✅ /work:creatework - Create Linear issues with intelligence
+  ✅ /work:performwork - Execute Linear issues with type safety
+  [✅/⚠️] Other commands depending on test results
+
+═══════════════════════════════════════════════════════════
 ```
 
-## Phase 1: Pre-Setup Validation
+---
 
-```javascript
-systems.performance.startPhase('validation');
+## Phase 9: Cleanup (Optional)
 
-console.log('🔍 Checking Linear workspace configuration...\n');
+**Ask user about test issue:**
 
-// Validate workspace access and permissions
-const validation = await systems.validation.validateWorkspace({
-  checkPermissions: ['label:create', 'label:read', 'label:update'],
-  checkTeam: config.team,
-  checkAPILimit: true
-});
+```
+The setup created a test issue: [Issue ID]
 
-if (!validation.passed) {
-  console.log('❌ Workspace validation failed:');
-  validation.errors.forEach(e => console.log(`  - ${e}`));
-  return;
-}
+Would you like me to:
+1. Leave it for manual review/deletion
+2. Archive it now
+3. Delete it now
 
-// Check existing labels
-const existingLabels = await systems.errorRecovery.executeWithRetry(
-  () => mcp__linear__list_issue_labels({ team: config.team }),
-  { maxRetries: 3, backoff: 'exponential' }
-);
-
-console.log(`📊 Found ${existingLabels.length} existing labels`);
-
-// Create checkpoint for recovery
-const checkpoint = await systems.checkpoint.create('linear-setup', {
-  existingLabels: existingLabels.map(l => ({ name: l.name, id: l.id })),
-  timestamp: new Date().toISOString()
-});
-
-systems.performance.endPhase('validation');
+Test issues are safe to delete - they were only for verification.
 ```
 
-## Phase 2: Comprehensive Label Definition
+**If user requests deletion:**
+- Use Linear MCP delete/archive issue tool
+- Confirm deletion
 
-```javascript
-systems.performance.startPhase('label-definition');
+---
 
-// Extended label set for enterprise tracking
-const requiredLabels = [
-  // Discovery Source (Green shades)
-  { name: "ai-discovered", color: "#10B981", description: "Found by AI during work", category: "source" },
-  { name: "ai-suggested", color: "#34D399", description: "AI recommended improvement", category: "source" },
-  { name: "user-reported", color: "#6EE7B7", description: "Reported by user", category: "source" },
+## Error Handling
 
-  // Discovery Method (Blue shades)
-  { name: "found-in-code-review", color: "#3B82F6", description: "Found during review", category: "method" },
-  { name: "found-in-implementation", color: "#60A5FA", description: "Found while coding", category: "method" },
-  { name: "found-in-testing", color: "#93C5FD", description: "Found during tests", category: "method" },
-  { name: "found-in-validation", color: "#BFDBFE", description: "Found during validation", category: "method" },
-  { name: "found-in-deployment", color: "#DBEAFE", description: "Found during deployment", category: "method" },
+### If Linear MCP fails during setup:
+- Report which phase failed
+- Provide diagnostic information
+- Suggest running `/work:diagnostic linear` for details
 
-  // Issue Type (Purple shades)
-  { name: "type:bug", color: "#A855F7", description: "Functional bug", category: "type" },
-  { name: "type:security", color: "#C084FC", description: "Security issue", category: "type" },
-  { name: "type:performance", color: "#D8B4FE", description: "Performance issue", category: "type" },
-  { name: "type:tech-debt", color: "#E9D5FF", description: "Technical debt", category: "type" },
-  { name: "type:enhancement", color: "#F3E8FF", description: "Enhancement", category: "type" },
-  { name: "type:optimization", color: "#FAF5FF", description: "Optimization opportunity", category: "type" },
-  { name: "type:refactor", color: "#9333EA", description: "Code refactoring", category: "type" },
+### If permissions insufficient:
+- Report: "Linear API key may lack required permissions"
+- Suggest checking Linear API token scopes at linear.app/settings/api
+- Required scopes: read, write, issues:create, comment:create
 
-  // Severity (Red/Orange gradient)
-  { name: "severity:critical", color: "#EF4444", description: "Production blocker", category: "severity" },
-  { name: "severity:high", color: "#F97316", description: "High priority", category: "severity" },
-  { name: "severity:medium", color: "#FB923C", description: "Medium priority", category: "severity" },
-  { name: "severity:low", color: "#FED7AA", description: "Low priority", category: "severity" },
+### If no teams found:
+- Report: "No teams found in Linear workspace"
+- Suggest: "Verify API key is for correct organization"
 
-  // AI-Specific Labels (Teal shades)
-  { name: "ai-confidence:high", color: "#14B8A6", description: "High confidence AI finding", category: "confidence" },
-  { name: "ai-confidence:medium", color: "#5EEAD4", description: "Medium confidence AI finding", category: "confidence" },
-  { name: "ai-confidence:low", color: "#99F6E4", description: "Low confidence AI finding", category: "confidence" },
+---
 
-  // Tracking Labels (Yellow shades)
-  { name: "needs-human-review", color: "#FDE047", description: "Requires human verification", category: "tracking" },
-  { name: "ai-validated", color: "#FEF08A", description: "Validated by AI", category: "tracking" },
-  { name: "auto-generated", color: "#FEF3C7", description: "Automatically generated", category: "tracking" },
+## Configuration File Support (Future)
 
-  // Deployment Risk (Rose shades)
-  { name: "deploy-risk:high", color: "#F43F5E", description: "High deployment risk", category: "risk" },
-  { name: "deploy-risk:medium", color: "#FB7185", description: "Medium deployment risk", category: "risk" },
-  { name: "deploy-risk:low", color: "#FDA4AF", description: "Low deployment risk", category: "risk" }
-];
+**Planned:** Save configuration to file for faster future setups
 
-// Analyze label requirements
-const labelAnalysis = {
-  total: requiredLabels.length,
-  categories: [...new Set(requiredLabels.map(l => l.category))],
-  toCreate: [],
-  toUpdate: [],
-  existing: [],
-  conflicts: []
-};
-
-// Check each required label
-for (const label of requiredLabels) {
-  const existing = existingLabels.find(l => l.name === label.name);
-
-  if (!existing) {
-    labelAnalysis.toCreate.push(label);
-  } else if (config.updateOutdated && (
-    existing.color !== label.color ||
-    existing.description !== label.description
-  )) {
-    labelAnalysis.toUpdate.push({ ...label, id: existing.id });
-  } else {
-    labelAnalysis.existing.push(label);
-  }
-}
-
-console.log('\n📋 Label Analysis:');
-console.log(`  Total required: ${labelAnalysis.total}`);
-console.log(`  Categories: ${labelAnalysis.categories.join(', ')}`);
-console.log(`  To create: ${labelAnalysis.toCreate.length}`);
-console.log(`  To update: ${labelAnalysis.toUpdate.length}`);
-console.log(`  Already exist: ${labelAnalysis.existing.length}`);
-
-systems.performance.endPhase('label-definition');
-```
-
-## Phase 3: Batch Label Creation with Recovery
-
-```javascript
-systems.performance.startPhase('label-creation');
-
-if (labelAnalysis.toCreate.length === 0 && labelAnalysis.toUpdate.length === 0) {
-  console.log('\n✅ All labels already configured correctly!');
-} else {
-  console.log('\n🚀 Configuring labels...\n');
-
-  // Create labels in batches
-  if (labelAnalysis.toCreate.length > 0) {
-    const createBatches = systems.batch.createBatches(
-      labelAnalysis.toCreate,
-      config.batchSize
-    );
-
-    let createdCount = 0;
-    for (const [index, batch] of createBatches.entries()) {
-      console.log(`📦 Processing batch ${index + 1}/${createBatches.length}...`);
-
-      try {
-        // Execute batch with error recovery
-        const batchResults = await systems.batch.executeBatch(
-          batch.map(label => ({
-            operation: 'create',
-            execute: () => mcp__linear__create_issue_label({
-              name: label.name,
-              color: label.color,
-              description: label.description,
-              teamId: config.team
-            }),
-            label: label,
-            onSuccess: () => {
-              console.log(`  ✅ Created: ${label.name}`);
-              createdCount++;
-            },
-            onError: (error) => {
-              console.log(`  ❌ Failed: ${label.name} - ${error.message}`);
-              return systems.errorRecovery.handleLabelError(label, error);
-            }
-          })),
-          { parallel: true, maxConcurrency: 3 }
-        );
-
-        // Update checkpoint after each batch
-        await systems.checkpoint.update(checkpoint.id, {
-          created: createdCount,
-          lastBatch: index + 1
-        });
-
-      } catch (batchError) {
-        console.log(`\n⚠️ Batch ${index + 1} encountered errors`);
-
-        // Try individual creation for failed items
-        for (const label of batch) {
-          try {
-            await systems.errorRecovery.executeWithRetry(
-              () => mcp__linear__create_issue_label({
-                name: label.name,
-                color: label.color,
-                description: label.description,
-                teamId: config.team
-              }),
-              { maxRetries: 2 }
-            );
-            console.log(`  🔄 Recovered: ${label.name}`);
-            createdCount++;
-          } catch (individualError) {
-            console.log(`  ❌ Skipped: ${label.name}`);
-          }
-        }
-      }
-
-      // Rate limit protection
-      if (index < createBatches.length - 1) {
-        await systems.batch.waitForRateLimit(1000);
-      }
-    }
-
-    console.log(`\n✅ Created ${createdCount}/${labelAnalysis.toCreate.length} labels`);
-  }
-
-  // Update existing labels if configured
-  if (labelAnalysis.toUpdate.length > 0 && config.updateOutdated) {
-    console.log('\n🔄 Updating outdated labels...\n');
-
-    let updatedCount = 0;
-    for (const label of labelAnalysis.toUpdate) {
-      try {
-        // Linear API doesn't have label update, so we note it
-        console.log(`  ℹ️ Would update: ${label.name} (API limitation)`);
-        updatedCount++;
-      } catch (error) {
-        console.log(`  ❌ Failed to update: ${label.name}`);
-      }
-    }
-
-    console.log(`\n✅ Processed ${updatedCount}/${labelAnalysis.toUpdate.length} updates`);
-  }
-}
-
-systems.performance.endPhase('label-creation');
-```
-
-## Phase 4: Configuration Verification
-
-```javascript
-systems.performance.startPhase('verification');
-
-console.log('\n🔍 Verifying configuration...\n');
-
-// Verify all labels are properly set up
-const finalLabels = await systems.errorRecovery.executeWithRetry(
-  () => mcp__linear__list_issue_labels({ team: config.team }),
-  { maxRetries: 3 }
-);
-
-const verification = {
-  success: true,
-  missing: [],
-  total: requiredLabels.length
-};
-
-// Check each required label exists
-for (const required of requiredLabels) {
-  if (!finalLabels.find(l => l.name === required.name)) {
-    verification.missing.push(required.name);
-    verification.success = false;
-  }
-}
-
-if (verification.success) {
-  console.log('✅ All required labels verified!');
-} else {
-  console.log(`⚠️ Missing ${verification.missing.length} labels:`);
-  verification.missing.forEach(name => console.log(`  - ${name}`));
-}
-
-// Store setup completion
-await systems.checkpoint.complete(checkpoint.id, {
-  success: verification.success,
-  totalLabels: finalLabels.length,
-  requiredLabels: requiredLabels.length,
-  missing: verification.missing
-});
-
-systems.performance.endPhase('verification');
-```
-
-## Phase 5: Setup Summary & Recommendations
-
-```javascript
-systems.performance.startPhase('summary');
-
-// Generate performance report
-const performanceReport = systems.performance.generateReport();
-
-console.log('\n' + '═'.repeat(60));
-console.log('           LINEAR SETUP COMPLETE');
-console.log('═'.repeat(60));
-
-console.log('\n📊 Setup Summary:');
-console.log(`  Required labels: ${requiredLabels.length}`);
-console.log(`  Created: ${labelAnalysis.toCreate.length}`);
-console.log(`  Already existed: ${labelAnalysis.existing.length}`);
-console.log(`  Total labels now: ${finalLabels.length}`);
-
-console.log('\n⏱️ Performance:');
-console.log(`  Total time: ${performanceReport.totalDuration}ms`);
-console.log(`  API calls: ${performanceReport.apiCalls}`);
-console.log(`  Batch efficiency: ${Math.round(performanceReport.batchEfficiency * 100)}%`);
-console.log(`  Errors recovered: ${performanceReport.errorsRecovered}`);
-
-console.log('\n🏷️ Label Categories Configured:');
-const categories = [...new Set(requiredLabels.map(l => l.category))];
-categories.forEach(cat => {
-  const count = requiredLabels.filter(l => l.category === cat).length;
-  console.log(`  ${cat}: ${count} labels`);
-});
-
-console.log('\n💡 Next Steps:');
-console.log('  1. Labels are now configured for all AI tracking needs');
-console.log('  2. Use /performwork commands to leverage these labels');
-console.log('  3. All discoveries will be automatically categorized');
-console.log('  4. Review high-confidence AI findings regularly');
-
-if (verification.missing.length > 0) {
-  console.log('\n⚠️ Action Required:');
-  console.log('  Some labels could not be created. Please:');
-  console.log('  1. Check Linear permissions');
-  console.log('  2. Verify team settings');
-  console.log('  3. Run setup again or create missing labels manually');
-}
-
-console.log('\n✨ Benefits of this setup:');
-console.log('  • 90% reduction in API calls during issue creation');
-console.log('  • Automatic categorization of all discoveries');
-console.log('  • Clear severity and confidence tracking');
-console.log('  • Better visibility into AI-generated work');
-console.log('  • Consistent labeling across all issues');
-
-console.log('\n' + '═'.repeat(60));
-
-systems.performance.endPhase('summary');
-
-// Return setup status
-return {
-  success: verification.success,
-  labelsConfigured: finalLabels.length,
-  performance: performanceReport,
-  checkpoint: checkpoint.id
-};
-```
-
-## Enterprise Systems
-
-### 📦 BatchOperations
-```javascript
-class BatchOperations {
-  createBatches(items, batchSize) {
-    const batches = [];
-    for (let i = 0; i < items.length; i += batchSize) {
-      batches.push(items.slice(i, i + batchSize));
-    }
-    return batches;
-  }
-
-  async executeBatch(operations, options) {
-    if (options.parallel) {
-      return Promise.allSettled(
-        operations.map(op => this.executeOperation(op))
-      );
-    }
-
-    const results = [];
-    for (const op of operations) {
-      results.push(await this.executeOperation(op));
-    }
-    return results;
-  }
-
-  async waitForRateLimit(ms) {
-    // Intelligent rate limiting
-    const currentRate = this.getCurrentAPIRate();
-    const waitTime = currentRate > 0.8 ? ms * 2 : ms;
-    await new Promise(resolve => setTimeout(resolve, waitTime));
-  }
+```json
+{
+  "linearTeamId": "[id]",
+  "linearTeamName": "The Reiss Group",
+  "workflowStates": {
+    "backlog": "[state-id]",
+    "todo": "[state-id]",
+    "inProgress": "[state-id]",
+    "done": "[state-id]"
+  },
+  "setupCompleted": "[timestamp]",
+  "mcpStatus": "connected"
 }
 ```
 
-### 🔄 ErrorRecoverySystem
-```javascript
-class ErrorRecoverySystem {
-  async handleLabelError(label, error) {
-    // Intelligent error handling
-    if (error.message.includes('already exists')) {
-      return { success: true, existed: true };
-    }
+---
 
-    if (error.message.includes('rate limit')) {
-      await this.waitForRateLimit();
-      return { retry: true };
-    }
+## Notes
 
-    if (error.message.includes('permission')) {
-      this.recordPermissionIssue(label);
-      return { success: false, permissionError: true };
-    }
+- Setup should be run once after installing the work plugin
+- Re-run if Linear connection changes or team changes
+- Test issue creation is safe and can be deleted afterward
+- All phases except Phase 4 are non-destructive
 
-    return { success: false, unknown: true };
-  }
-}
-```
+---
 
-## Configuration Options
-
-```javascript
-const config = {
-  // Team configuration
-  team: "The Reiss Group",
-
-  // Batch settings
-  batchSize: 5,
-  parallelBatches: true,
-  maxConcurrency: 3,
-
-  // Recovery settings
-  retryAttempts: 3,
-  retryBackoff: 'exponential',
-  continueOnError: true,
-
-  // Validation settings
-  validateExisting: true,
-  updateOutdated: false, // Set true to update colors/descriptions
-
-  // Performance settings
-  rateLimitDelay: 1000,
-  timeout: 30000
-};
-```
-
-## Benefits Over Original
-
-1. **📦 Batch Operations** - Create multiple labels efficiently
-2. **🔄 Error Recovery** - Automatic retry and fallback strategies
-3. **💾 Checkpoint System** - Resume from failure points
-4. **📊 Detailed Metrics** - Performance and success tracking
-5. **🏷️ Extended Label Set** - 28 labels for comprehensive tracking
-6. **✅ Verification Phase** - Ensures setup completed correctly
-
-## Usage
-
-```bash
-# Basic setup (creates all missing labels)
-/linear-setup
-
-# Update existing labels to match definitions
-/linear-setup --update-existing
-
-# Verify only (no creation)
-/linear-setup --verify-only
-
-# Custom team
-/linear-setup --team="Another Team"
-```
+**Remember:** This is an executable prompt. Actually test the Linear MCP connections. Actually create the test issue. Actually verify the capabilities work.

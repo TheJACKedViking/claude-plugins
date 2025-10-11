@@ -3,223 +3,313 @@ description: Execute automated command workflows for end-to-end task completion
 argument-hint: [workflow-name] [context]
 ---
 
-# /workflow - Automated Command Workflows
+# Workflow - Executable Instructions
 
-Execute predefined or custom workflows that chain multiple commands together.
+**Your task:** Execute predefined workflows that chain multiple commands together for end-to-end task completion.
 
-## Usage
+## Workflow Requested
 
-```bash
-# Run predefined workflow
-/workflow <workflow-name> [context]
+Workflow: `{{workflow-name}}`
+Context: `{{context}}`
 
-# Examples:
-/workflow full-lifecycle "Add user authentication"
-/workflow batch-process "TRG-123, TRG-124, TRG-125"
-/workflow health-check-fix
-```
+## Instructions
 
-## Execution
+---
 
-```javascript
-// Load shared systems
-const workflowEngine = require('../shared/workflow-engine.js');
-const globalState = require('../shared/state-manager.js');
-const eventBus = require('../shared/event-bus.js');
+## Phase 1: Determine Workflow
 
-// Parse arguments
-const args = $ARGUMENTS.split(/\s+/);
-const workflowName = args[0];
-const contextArgs = args.slice(1).join(' ');
+1. **Parse arguments:**
+   - Workflow name: first argument
+   - Context: remaining arguments
 
-// Validate workflow exists
-const availableWorkflows = workflowEngine.list();
+2. **If no workflow specified:**
+   ```
+   📋 Available Workflows:
 
-if (!workflowName) {
-  console.log('📋 Available Workflows:\n');
-  availableWorkflows.forEach(wf => {
-    console.log(`  ${wf.name.padEnd(25)} - ${wf.description}`);
-    console.log(`  ${' '.repeat(25)}   (${wf.steps} steps)\n`);
-  });
+   full-lifecycle
+     Create and execute a Linear issue end-to-end
+     Steps: creatework → performwork → validate
+     Usage: /workflow full-lifecycle "Description"
 
-  console.log('\nUsage: /workflow <workflow-name> [context]');
-  console.log('\nExamples:');
-  console.log('  /workflow full-lifecycle "Add user auth"');
-  console.log('  /workflow batch-process "TRG-123, TRG-124"');
-  console.log('  /workflow health-check-fix');
-  return;
-}
+   batch-process
+     Process multiple Linear issues in sequence
+     Steps: performwork (multiple) → validate
+     Usage: /workflow batch-process "TRG-123, TRG-124, TRG-125"
 
-// Parse context based on workflow
-let context = {};
+   health-check-fix
+     Run diagnostics and fix common issues
+     Steps: diagnostic → validate → fix recommendations
+     Usage: /workflow health-check-fix
 
-switch(workflowName) {
-  case 'full-lifecycle':
-    context = { description: contextArgs };
-    break;
+   create-and-validate
+     Create issue and validate codebase
+     Steps: creatework → validate
+     Usage: /workflow create-and-validate "Description"
 
-  case 'batch-process':
-    const issueIds = contextArgs.split(',').map(id => id.trim());
-    context = { issueIds };
-    break;
+   ───────────────────────────────────────────────────────
+   Usage: /work:workflow <workflow-name> [context]
+   ```
+   - STOP execution
 
-  case 'health-check-fix':
-    context = {};
-    break;
+3. **Validate workflow exists:**
+   - Check if workflow name matches one of the available workflows
+   - If not found:
+     ```
+     ❌ Unknown workflow: {{workflow-name}}
 
-  default:
-    // Try to parse as JSON or use as string
-    try {
-      context = JSON.parse(contextArgs);
-    } catch {
-      context = { input: contextArgs };
-    }
-}
+     Available workflows: full-lifecycle, batch-process, health-check-fix, create-and-validate
 
-// Subscribe to workflow events for progress tracking
-eventBus.on(`workflow:started`, (data) => {
-  console.log(`\n🚀 Workflow started: ${data.workflow}`);
-  console.log(`   Execution ID: ${data.executionId}\n`);
-});
+     Use /work:workflow with no arguments to see details.
+     ```
+     - STOP execution
 
-eventBus.on(`workflow:step:completed`, (data) => {
-  console.log(`✅ Step completed: ${data.step}`);
-});
+---
 
-eventBus.on(`workflow:step:failed`, (data) => {
-  console.log(`❌ Step failed: ${data.step} - ${data.error}`);
-});
+## Phase 2: Execute Workflow
 
-// Execute workflow
-console.log(`\n${'='.repeat(60)}`);
-console.log(`🔄 EXECUTING WORKFLOW: ${workflowName}`);
-console.log(`${'='.repeat(60)}\n`);
+### Workflow: full-lifecycle
 
-try {
-  const result = await workflowEngine.execute(workflowName, context);
+**Purpose:** Create and execute a Linear issue from description to completion
 
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`✅ WORKFLOW COMPLETED SUCCESSFULLY`);
-  console.log(`${'='.repeat(60)}\n`);
+**Steps:**
 
-  console.log('📊 Results Summary:');
-  for (const [step, stepResult] of Object.entries(result)) {
-    console.log(`\n  ${step}:`);
-    if (typeof stepResult === 'object') {
-      console.log(`    ${JSON.stringify(stepResult, null, 2).split('\n').join('\n    ')}`);
-    } else {
-      console.log(`    ${stepResult}`);
+1. **Step 1: Create issue**
+   - Use `/work:creatework` slash command with context as description
+   - Wait for issue creation
+   - Extract issue ID from result
+
+2. **Step 2: Execute issue**
+   - Use `/work:performwork` slash command with created issue ID
+   - Wait for implementation completion
+
+3. **Step 3: Validate**
+   - Use `/work:validate` slash command with `--full` flag
+   - Report validation results
+
+4. **Final report:**
+   ```
+   ═══════════════════════════════════════════════════════════
+   ✅ FULL-LIFECYCLE WORKFLOW COMPLETE
+   ═══════════════════════════════════════════════════════════
+
+   Issue Created: [ISSUE-ID]
+   Implementation: [✅ Complete / ⚠️ Partial / ❌ Failed]
+   Validation: [✅ Pass / ❌ Fail]
+
+   🔗 Issue URL: [url]
+
+   ═══════════════════════════════════════════════════════════
+   ```
+
+---
+
+### Workflow: batch-process
+
+**Purpose:** Process multiple Linear issues in sequence with validation
+
+**Steps:**
+
+1. **Parse issue IDs:**
+   - Split context by comma
+   - Extract issue IDs: [ID1, ID2, ID3, ...]
+   - Validate format of each ID
+
+2. **Use Sequential-thinking to analyze dependencies and execution order:**
+
+   - Thought: "Executing [N] issues in batch: [list IDs]. I need to: 1) Fetch titles/descriptions from Linear for each issue, 2) Identify potential dependencies between issues (does Issue B depend on Issue A?), 3) Determine optimal execution order, 4) Identify which issues can run in parallel vs must be sequential, 5) Assess overall complexity and time estimate."
+   - thoughtNumber: 1
+   - totalThoughts: 7
+   - nextThoughtNeeded: true
+
+3. **Parse dependency analysis:**
+   - Execution order: [list of issue IDs in optimal order]
+   - Dependencies: [mapping of dependent issues]
+   - Parallel groups: [issues that can run concurrently]
+   - Estimated total time
+
+4. **For each issue in determined order:**
+   - Use `/work:performwork` slash command
+   - Track success/failure
+   - Report progress:
+     ```
+     Processing issue [N]/[Total]: [ISSUE-ID]
+     ```
+
+3. **After all issues:**
+   - Use `/work:validate` slash command with `--full` flag
+
+4. **Final report:**
+   ```
+   ═══════════════════════════════════════════════════════════
+   ✅ BATCH-PROCESS WORKFLOW COMPLETE
+   ═══════════════════════════════════════════════════════════
+
+   Total Issues: [N]
+   Completed: [N]
+   Failed: [N]
+   Validation: [✅ Pass / ❌ Fail]
+
+   Details:
+   - [ISSUE-1]: ✅ Complete
+   - [ISSUE-2]: ✅ Complete
+   - [ISSUE-3]: ❌ Failed - [reason]
+
+   ═══════════════════════════════════════════════════════════
+   ```
+
+---
+
+### Workflow: health-check-fix
+
+**Purpose:** Run comprehensive diagnostics and apply fixes
+
+**Steps:**
+
+1. **Step 1: Run diagnostics**
+   - Use `/work:diagnostic` slash command with `full` mode
+   - Capture all issues found
+
+2. **Step 2: Analyze issues**
+   - Categorize by severity (critical/warning/info)
+   - Identify auto-fixable issues
+
+3. **Step 3: Apply fixes**
+   - For MCP connection issues: Report instructions (cannot auto-fix)
+   - For dependency issues: Suggest `npm install`
+   - For validation script issues: Suggest script additions
+
+4. **Step 4: Re-run diagnostics**
+   - Use `/work:diagnostic` slash command again
+   - Compare before/after
+
+5. **Final report:**
+   ```
+   ═══════════════════════════════════════════════════════════
+   ✅ HEALTH-CHECK-FIX WORKFLOW COMPLETE
+   ═══════════════════════════════════════════════════════════
+
+   Initial Issues: [N]
+   Fixed: [N]
+   Remaining: [N]
+
+   Health Status: [✅ Healthy / ⚠️ Warnings / ❌ Critical Issues]
+
+   Manual Actions Required:
+   - [Action 1]
+   - [Action 2]
+
+   ═══════════════════════════════════════════════════════════
+   ```
+
+---
+
+### Workflow: create-and-validate
+
+**Purpose:** Create a Linear issue and validate the codebase is ready
+
+**Steps:**
+
+1. **Step 1: Validate first**
+   - Use `/work:validate` slash command with `--quick` flag
+   - Ensure codebase is in good state before creating issue
+
+2. **Step 2: Create issue**
+   - Use `/work:creatework` slash command with context
+   - Wait for issue creation
+
+3. **Final report:**
+   ```
+   ═══════════════════════════════════════════════════════════
+   ✅ CREATE-AND-VALIDATE WORKFLOW COMPLETE
+   ═══════════════════════════════════════════════════════════
+
+   Validation: [✅ Pass / ❌ Fail]
+   Issue Created: [ISSUE-ID]
+
+   🔗 Issue URL: [url]
+
+   Ready to work: [✅ Yes / ⚠️ Fix validation issues first]
+
+   ═══════════════════════════════════════════════════════════
+   ```
+
+---
+
+## Phase 3: Error Handling
+
+**If any step fails:**
+
+1. **Report failure:**
+   ```
+   ❌ Workflow step failed: [step name]
+   Error: [error details]
+   ```
+
+2. **Ask user:**
+   ```
+   Options:
+   1. Continue to next step (skip failed step)
+   2. Retry failed step
+   3. Abort workflow
+
+   What would you like to do?
+   ```
+
+3. **Based on user choice:**
+   - Continue: Proceed to next step, mark failed step in report
+   - Retry: Re-run the failed step once
+   - Abort: Stop workflow and provide summary of completed steps
+
+---
+
+## Notes on Workflow Execution
+
+- **Sequential execution:** Steps run one after another (not parallel)
+- **Slash command integration:** Each step uses actual slash commands (not direct tool calls)
+- **Progress tracking:** Clear progress indicators after each step
+- **Error resilience:** Failures don't crash entire workflow, user can choose to continue
+- **Comprehensive reporting:** Final reports show full workflow results
+
+---
+
+## Custom Workflow Support (Future)
+
+**Planned:** Allow users to define custom workflows in a config file:
+
+```json
+{
+  "workflows": {
+    "my-custom-workflow": {
+      "description": "My custom workflow description",
+      "steps": [
+        {
+          "command": "/work:diagnostic",
+          "args": "quick"
+        },
+        {
+          "command": "/work:creatework",
+          "args": "$CONTEXT"
+        }
+      ]
     }
   }
-
-  // Store in global state
-  globalState.setState('lastWorkflow', {
-    name: workflowName,
-    context,
-    result,
-    timestamp: Date.now()
-  }, { persist: true });
-
-  return result;
-
-} catch (error) {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`❌ WORKFLOW FAILED`);
-  console.log(`${'='.repeat(60)}\n`);
-
-  console.log(`Error: ${error.message}`);
-
-  // Get execution details
-  const executions = workflowEngine.getRunning();
-  const currentExec = executions.find(e => e.workflow === workflowName);
-
-  if (currentExec) {
-    console.log('\n📋 Execution Details:');
-    console.log(`  Status: ${currentExec.status}`);
-    console.log(`  Completed Steps: ${currentExec.steps.filter(s => s.status === 'completed').length}/${currentExec.steps.length}`);
-
-    const failedSteps = currentExec.steps.filter(s => s.status === 'failed');
-    if (failedSteps.length > 0) {
-      console.log('\n  Failed Steps:');
-      failedSteps.forEach(step => {
-        console.log(`    - ${step.name}: ${step.error}`);
-      });
-    }
-  }
-
-  throw error;
 }
 ```
 
-## Predefined Workflows
+---
 
-### full-lifecycle
-Creates, implements, and validates an issue end-to-end.
+## Error Handling
 
-**Context:**
-- `description`: Issue description
+### If slash command not found:
+- Report: "❌ Command not available: [command]"
+- Check if work plugin is properly installed
+- Suggest running `/work:diagnostic`
 
-**Steps:**
-1. Create issue via /creatework
-2. Implement via /performwork
-3. Validate via /validate
+### If context missing but required:
+- Report: "❌ Context required for this workflow"
+- Show usage example
+- STOP execution
 
-### batch-process
-Processes multiple issues with dependency analysis.
+---
 
-**Context:**
-- `issueIds`: Array of issue IDs
-
-**Steps:**
-1. Validate input
-2. Execute batch via /performwork
-3. Validate all changes
-
-### health-check-fix
-Diagnoses system and auto-remediates issues.
-
-**Context:** None
-
-**Steps:**
-1. Run diagnostics
-2. Verify health
-3. Auto-remediate if needed
-4. Verify fix
-
-## Custom Workflows
-
-You can define custom workflows programmatically:
-
-```javascript
-const workflowEngine = require('./shared/workflow-engine.js');
-
-workflowEngine.define('my-workflow', {
-  name: 'My Custom Workflow',
-  description: 'Custom workflow description',
-  steps: [
-    {
-      name: 'step1',
-      execute: async (ctx) => {
-        // Step logic
-        return result;
-      },
-      condition: (ctx, results) => {
-        // Optional: only run if condition is true
-        return true;
-      },
-      updateContext: true, // Pass result to next steps
-      onError: 'continue' // 'continue', 'retry', or 'stop' (default)
-    },
-    // More steps...
-  ]
-});
-```
-
-## Benefits
-
-✅ **Automated Workflows** - Chain commands without manual intervention
-✅ **Error Recovery** - Configurable error handling per step
-✅ **Progress Tracking** - Real-time updates via event bus
-✅ **Conditional Logic** - Skip steps based on conditions
-✅ **Context Passing** - Share data between steps
-✅ **Reusable Patterns** - Define once, use many times
+**Remember:** This is an executable prompt. Actually invoke the slash commands mentioned. Actually wait for their completion. Actually report accurate progress.
