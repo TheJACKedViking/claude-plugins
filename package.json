@@ -2,19 +2,19 @@
   "name": "claude-code-plugins-marketplace",
   "version": "1.0.0",
   "description": "A plugin marketplace framework for Claude Code with extensible slash commands and agent coordination",
-  "main": "core/index.ts",
+  "main": "dist/core/index.js",
   "type": "module",
   "scripts": {
-    "start": "ts-node core/cli.ts",
-    "list": "ts-node core/cli.ts list",
-    "commands": "ts-node core/cli.ts commands",
-    "stats": "ts-node core/cli.ts stats",
+    "start": "node dist/core/cli.js",
+    "list": "node dist/core/cli.js list",
+    "commands": "node dist/core/cli.js commands",
+    "stats": "node dist/core/cli.js stats",
     "build": "tsc",
     "test": "jest",
     "dev": "ts-node-dev core/cli.ts"
   },
   "bin": {
-    "marketplace": "./core/cli.ts"
+    "marketplace": "./dist/core/cli.js"
   },
   "keywords": [
     "claude-code",
@@ -31,12 +31,12 @@
     "@types/node": "^20.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "ts-node": "^10.9.0",
-    "ts-node-dev": "^2.0.0",
     "@types/jest": "^29.0.0",
     "jest": "^29.0.0",
-    "ts-jest": "^29.0.0"
+    "ts-jest": "^29.0.0",
+    "ts-node": "^10.9.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18.0.0"

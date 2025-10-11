@@ -1,17 +1,19 @@
+#!/usr/bin/env node
 /**
  * Claude Code Plugins Marketplace - CLI Interface
  *
  * Command-line interface for managing the marketplace
  */
 
-import { Marketplace } from './marketplace';
-import * as path from 'path';
+import { Marketplace } from './marketplace.js';
+import { LoadedPlugin, CommandDefinition, CommandParameter } from './plugin-loader.js';
+import { fileURLToPath } from 'url';
 
 export class MarketplaceCLI {
   private marketplace: Marketplace;
 
   constructor(marketplaceRoot?: string) {
-    const root = marketplaceRoot || path.join(process.cwd(), 'marketplace');
+    const root = marketplaceRoot || process.cwd();
     this.marketplace = new Marketplace(root);
   }
 
@@ -36,16 +38,16 @@ export class MarketplaceCLI {
       return;
     }
 
-    plugins.forEach(plugin => {
+    plugins.forEach((plugin: LoadedPlugin) => {
       const status = plugin.enabled ? '✓' : '✗';
-      console.log(`\n[${status}] ${plugin.metadata.name} (${plugin.metadata.id})`);
+      console.log(`\n[${status}] ${plugin.metadata.name}`);
       console.log(`    Version: ${plugin.metadata.version}`);
       console.log(`    ${plugin.metadata.description}`);
-      console.log(`    Commands: ${plugin.metadata.commands.length}`);
+      console.log(`    Commands: ${plugin.metadata.commands?.length || 0}`);
 
-      if (plugin.metadata.commands.length > 0) {
-        plugin.metadata.commands.forEach(cmd => {
-          console.log(`      - /${plugin.metadata.id}:${cmd.name} - ${cmd.description}`);
+      if (plugin.metadata.commands && plugin.metadata.commands.length > 0) {
+        plugin.metadata.commands.forEach((cmd: CommandDefinition) => {
+          console.log(`      - /${plugin.metadata.name}:${cmd.name} - ${cmd.description}`);
         });
       }
     });
@@ -67,7 +69,7 @@ export class MarketplaceCLI {
       return;
     }
 
-    commands.forEach(({ plugin, command }, commandKey) => {
+    commands.forEach(({ plugin, command }: { plugin: LoadedPlugin; command: CommandDefinition }, commandKey: string) => {
       const status = plugin.enabled ? '✓' : '✗';
       console.log(`[${status}] /${commandKey}`);
       console.log(`    ${command.description}`);
@@ -75,7 +77,7 @@ export class MarketplaceCLI {
 
       if (command.parameters && command.parameters.length > 0) {
         console.log('    Parameters:');
-        command.parameters.forEach(param => {
+        command.parameters.forEach((param: CommandParameter) => {
           const required = param.required ? 'required' : 'optional';
           console.log(`      - ${param.name} (${param.type}, ${required}): ${param.description}`);
         });
@@ -126,20 +128,19 @@ export class MarketplaceCLI {
   /**
    * Show plugin details
    */
-  info(pluginId: string): void {
-    const plugin = this.marketplace.getPlugin(pluginId);
+  info(pluginName: string): void {
+    const plugin = this.marketplace.getPlugin(pluginName);
 
     if (!plugin) {
-      console.error(`✗ Plugin '${pluginId}' not found`);
+      console.error(`✗ Plugin '${pluginName}' not found`);
       return;
     }
 
     console.log('\nPlugin Information:');
     console.log('═'.repeat(80));
-    console.log(`ID:           ${plugin.metadata.id}`);
     console.log(`Name:         ${plugin.metadata.name}`);
     console.log(`Version:      ${plugin.metadata.version}`);
-    console.log(`Author:       ${plugin.metadata.author}`);
+    console.log(`Author:       ${plugin.metadata.author.name}`);
     console.log(`Description:  ${plugin.metadata.description}`);
     console.log(`Status:       ${plugin.enabled ? 'Enabled' : 'Disabled'}`);
 
@@ -155,11 +156,13 @@ export class MarketplaceCLI {
       console.log(`Tags:         ${plugin.metadata.tags.join(', ')}`);
     }
 
-    console.log(`\nCommands (${plugin.metadata.commands.length}):`);
-    plugin.metadata.commands.forEach(cmd => {
-      console.log(`  /${plugin.metadata.id}:${cmd.name}`);
-      console.log(`    ${cmd.description}`);
-    });
+    console.log(`\nCommands (${plugin.metadata.commands?.length || 0}):`);
+    if (plugin.metadata.commands) {
+      plugin.metadata.commands.forEach((cmd: CommandDefinition) => {
+        console.log(`  /${plugin.metadata.name}:${cmd.name}`);
+        console.log(`    ${cmd.description}`);
+      });
+    }
 
     console.log('═'.repeat(80));
   }
@@ -180,8 +183,8 @@ export class MarketplaceCLI {
   }
 }
 
-// CLI entry point
-if (require.main === module) {
+// CLI entry point - check if this module is being run directly
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const cli = new MarketplaceCLI();
   const args = process.argv.slice(2);
   const command = args[0];

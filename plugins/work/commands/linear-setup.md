@@ -1,3 +1,7 @@
+---
+description: Initialize Linear workspace with batch operations, error recovery, and comprehensive configuration
+---
+
 # /linear-setup - Robust Workspace Configuration
 
 Initialize Linear workspace with intelligent batch operations, error recovery, and comprehensive setup.

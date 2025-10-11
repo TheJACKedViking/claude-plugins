@@ -4,12 +4,12 @@
  * Main exports for the marketplace framework
  */
 
-export { Marketplace, MarketplaceConfig, PluginRegistry } from './marketplace';
+export { Marketplace, MarketplaceConfig, PluginRegistry } from './marketplace.js';
 export {
   PluginLoader,
   LoadedPlugin,
   PluginMetadata,
   CommandDefinition,
   CommandParameter
-} from './plugin-loader';
-export { MarketplaceCLI } from './cli';
+} from './plugin-loader.js';
+export { MarketplaceCLI } from './cli.js';

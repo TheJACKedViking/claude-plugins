@@ -1,0 +1,19 @@
+{
+  "name": "work",
+  "description": "Enterprise Linear issue management with intelligent workflows, type safety verification, and comprehensive validation",
+  "version": "1.0.0",
+  "author": {
+    "name": "Claude Code Marketplace Team",
+    "url": "https://github.com/TheJACKedViking/claude-plugins"
+  },
+  "repository": "https://github.com/TheJACKedViking/claude-plugins",
+  "license": "MIT",
+  "tags": [
+    "linear",
+    "issue-management",
+    "workflow-automation",
+    "type-safety",
+    "validation",
+    "enterprise"
+  ]
+}

@@ -1,3 +1,8 @@
+---
+description: Create Linear issues with intelligent deduplication, pattern learning, and quality optimization
+argument-hint: [description]
+---
+
 # /creatework - Intelligent Issue Creation with Learning
 
 Create Linear issues with advanced deduplication, pattern learning, and quality optimization.

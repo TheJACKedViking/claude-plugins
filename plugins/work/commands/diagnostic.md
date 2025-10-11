@@ -1,3 +1,8 @@
+---
+description: Comprehensive system health monitoring and diagnostics for all AI command systems
+argument-hint: [mode]
+---
+
 # /diagnostic - Enterprise System Health Monitoring
 
 Comprehensive health check and performance monitoring for all AI command systems.

@@ -1,3 +1,8 @@
+---
+description: Execute automated command workflows for end-to-end task completion
+argument-hint: [workflow-name] [context]
+---
+
 # /workflow - Automated Command Workflows
 
 Execute predefined or custom workflows that chain multiple commands together.

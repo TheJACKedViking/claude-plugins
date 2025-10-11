@@ -1,3 +1,7 @@
+---
+description: Run comprehensive validation with smart parallelization, caching, and detailed metrics
+---
+
 # /validate - Intelligent Validation with Performance Optimization
 
 Run comprehensive validation with smart parallelization, caching, and detailed metrics.

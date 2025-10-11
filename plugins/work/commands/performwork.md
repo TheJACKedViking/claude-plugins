@@ -1,3 +1,8 @@
+---
+description: Execute Linear issues with requirement adherence, mandatory type checking, and truthful documentation
+argument-hint: [issueId]
+---
+
 # /performwork - Enterprise-Grade Execution with Type Safety Verification
 
 Execute Linear issues with perfect requirement adherence, comprehensive discovery, **mandatory type checking**, and **truthful documentation only**.

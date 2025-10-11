@@ -8,15 +8,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export interface PluginMetadata {
-  id: string;
   name: string;
-  version: string;
   description: string;
-  author: string;
+  version: string;
+  author: {
+    name: string;
+    email?: string;
+    url?: string;
+  };
   repository?: string;
   license?: string;
   tags?: string[];
-  commands: CommandDefinition[];
+  commands?: CommandDefinition[];
 }
 
 export interface CommandDefinition {
@@ -59,7 +62,8 @@ export class PluginLoader {
       try {
         const plugin = await this.loadPlugin(pluginDir);
         if (plugin) {
-          this.plugins.set(plugin.metadata.id, plugin);
+          // Use plugin name as key
+          this.plugins.set(plugin.metadata.name, plugin);
           loadedPlugins.push(plugin);
         }
       } catch (error) {
@@ -74,10 +78,11 @@ export class PluginLoader {
    * Load a single plugin from a directory
    */
   async loadPlugin(pluginPath: string): Promise<LoadedPlugin | null> {
-    const metadataPath = path.join(pluginPath, 'plugin.json');
+    // Official Claude Code format: .claude-plugin/plugin.json
+    const metadataPath = path.join(pluginPath, '.claude-plugin', 'plugin.json');
 
     if (!fs.existsSync(metadataPath)) {
-      console.warn(`No plugin.json found in ${pluginPath}`);
+      console.warn(`No .claude-plugin/plugin.json found in ${pluginPath}`);
       return null;
     }
 
@@ -91,7 +96,7 @@ export class PluginLoader {
       return null;
     }
 
-    // Load command prompts from command files
+    // Auto-discover commands from commands directory
     await this.loadCommandPrompts(metadata, pluginPath);
 
     return {
@@ -103,6 +108,7 @@ export class PluginLoader {
 
   /**
    * Load command prompt content from command files
+   * Auto-discovers all .md files in the commands/ directory
    */
   private async loadCommandPrompts(
     metadata: PluginMetadata,
@@ -111,16 +117,81 @@ export class PluginLoader {
     const commandsDir = path.join(pluginPath, 'commands');
 
     if (!fs.existsSync(commandsDir)) {
+      metadata.commands = [];
       return;
     }
 
-    for (const command of metadata.commands) {
-      const commandFile = path.join(commandsDir, `${command.name}.md`);
+    // Auto-discover commands from markdown files
+    metadata.commands = [];
+    const commandFiles = fs.readdirSync(commandsDir)
+      .filter(file => file.endsWith('.md'));
 
-      if (fs.existsSync(commandFile)) {
-        command.prompt = fs.readFileSync(commandFile, 'utf-8');
-      }
+    for (const file of commandFiles) {
+      const commandName = file.replace('.md', '');
+      const commandFile = path.join(commandsDir, file);
+      const content = fs.readFileSync(commandFile, 'utf-8');
+
+      // Parse frontmatter
+      const { frontmatter, body } = this.parseFrontmatter(content);
+
+      metadata.commands.push({
+        name: commandName,
+        description: frontmatter.description || `${commandName} command`,
+        prompt: body,
+        parameters: this.parseArgumentHint(frontmatter['argument-hint'])
+      });
     }
+  }
+
+  /**
+   * Parse YAML frontmatter from markdown content
+   */
+  private parseFrontmatter(content: string): { frontmatter: any; body: string } {
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+    const match = content.match(frontmatterRegex);
+
+    if (!match) {
+      return { frontmatter: {}, body: content };
+    }
+
+    const frontmatterText = match[1];
+    const body = match[2];
+    const frontmatter: any = {};
+
+    // Simple YAML parser for key: value pairs
+    frontmatterText.split('\n').forEach(line => {
+      const colonIndex = line.indexOf(':');
+      if (colonIndex > 0) {
+        const key = line.substring(0, colonIndex).trim();
+        const value = line.substring(colonIndex + 1).trim();
+        frontmatter[key] = value;
+      }
+    });
+
+    return { frontmatter, body };
+  }
+
+  /**
+   * Parse argument-hint into parameters array
+   */
+  private parseArgumentHint(hint?: string): CommandParameter[] | undefined {
+    if (!hint) return undefined;
+
+    // Simple parser for [arg1] [arg2] format
+    const args = hint.match(/\[([^\]]+)\]/g);
+    if (!args) return undefined;
+
+    return args.map((arg, index) => {
+      const name = arg.replace(/[\[\]]/g, '');
+      const isOptional = hint.indexOf(arg) > hint.indexOf('[') && index > 0;
+
+      return {
+        name,
+        type: 'string' as const,
+        description: `${name} parameter`,
+        required: index === 0 && !isOptional
+      };
+    });
   }
 
   /**
@@ -141,21 +212,20 @@ export class PluginLoader {
    * Validate plugin metadata
    */
   private validateMetadata(metadata: PluginMetadata): boolean {
+    // Official format: only name, description, and version required
+    // id and commands are optional (commands auto-discovered)
     return !!(
-      metadata.id &&
       metadata.name &&
       metadata.version &&
-      metadata.description &&
-      metadata.commands &&
-      Array.isArray(metadata.commands)
+      metadata.description
     );
   }
 
   /**
-   * Get a plugin by ID
+   * Get a plugin by name
    */
-  getPlugin(id: string): LoadedPlugin | undefined {
-    return this.plugins.get(id);
+  getPlugin(name: string): LoadedPlugin | undefined {
+    return this.plugins.get(name);
   }
 
   /**
@@ -172,9 +242,11 @@ export class PluginLoader {
     const commands = new Map();
 
     for (const plugin of this.plugins.values()) {
-      for (const command of plugin.metadata.commands) {
-        const commandKey = `${plugin.metadata.id}:${command.name}`;
-        commands.set(commandKey, { plugin, command });
+      if (plugin.metadata.commands) {
+        for (const command of plugin.metadata.commands) {
+          const commandKey = `${plugin.metadata.name}:${command.name}`;
+          commands.set(commandKey, { plugin, command });
+        }
       }
     }
 

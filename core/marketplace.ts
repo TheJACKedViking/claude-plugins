@@ -6,7 +6,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { PluginLoader, LoadedPlugin, CommandDefinition } from './plugin-loader';
+import { PluginLoader, LoadedPlugin, CommandDefinition, CommandParameter } from './plugin-loader.js';
 
 export interface MarketplaceConfig {
   version: string;
@@ -82,7 +82,7 @@ export class Marketplace {
     }
 
     if (!commandEntry.plugin.enabled) {
-      throw new Error(`Plugin ${commandEntry.plugin.metadata.id} is disabled`);
+      throw new Error(`Plugin ${commandEntry.plugin.metadata.name} is disabled`);
     }
 
     // Return the command prompt (in real implementation, this would be processed)
@@ -90,7 +90,7 @@ export class Marketplace {
 
     // Simple parameter substitution
     if (args && commandEntry.command.parameters) {
-      commandEntry.command.parameters.forEach((param, index) => {
+      commandEntry.command.parameters.forEach((param: CommandParameter, index: number) => {
         const value = args[index] ?? param.default ?? '';
         prompt = prompt.replace(new RegExp(`\\{\\{${param.name}\\}\\}`, 'g'), String(value));
       });
@@ -147,8 +147,8 @@ export class Marketplace {
 
     this.registry = {
       version: this.config.version,
-      plugins: plugins.map(plugin => ({
-        id: plugin.metadata.id,
+      plugins: plugins.map((plugin: LoadedPlugin) => ({
+        id: plugin.metadata.name,
         enabled: plugin.enabled,
         installedVersion: plugin.metadata.version
       })),
@@ -171,7 +171,7 @@ export class Marketplace {
 
     return {
       totalPlugins: plugins.length,
-      enabledPlugins: plugins.filter(p => p.enabled).length,
+      enabledPlugins: plugins.filter((p: LoadedPlugin) => p.enabled).length,
       totalCommands: commands.size,
       version: this.config.version
     };
