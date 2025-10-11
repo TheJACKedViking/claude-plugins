@@ -1,7 +1,7 @@
 {
-  "name": "claude-code-marketplace",
+  "name": "thejackedviking-claude-code",
   "owner": {
-    "name": "Claude Code Marketplace Team"
+    "name": "TheJACKedViking Plugin"
   },
   "plugins": [
     {
