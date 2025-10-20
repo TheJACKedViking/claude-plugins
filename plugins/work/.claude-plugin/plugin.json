@@ -7,13 +7,5 @@
     "url": "https://github.com/TheJACKedViking/claude-plugins"
   },
   "repository": "https://github.com/TheJACKedViking/claude-plugins",
-  "license": "MIT",
-  "tags": [
-    "linear",
-    "issue-management",
-    "workflow-automation",
-    "type-safety",
-    "validation",
-    "enterprise"
-  ]
+  "license": "MIT"
 }
