@@ -7,6 +7,22 @@ argument-hint: [issueId]
 
 **Your task:** Execute a Linear issue with perfect requirement adherence, mandatory type checking, and truthful documentation.
 
+---
+
+## ⚠️⚠️⚠️ CRITICAL INSTRUCTION ⚠️⚠️⚠️
+
+**THIS IS AN EXECUTABLE COMMAND - NOT DOCUMENTATION**
+
+- ✋ **DO NOT** just read and acknowledge these steps
+- ✅ **DO** immediately begin executing them
+- 🔧 **ACTUALLY CALL** the MCP tools mentioned (Linear, Sequential-thinking, TypeScript agents, etc.)
+- ⚡ **START NOW** with Phase 0 below
+- 🎯 **YOU ARE EXECUTING THIS TASK RIGHT NOW** - not planning, not reviewing, EXECUTING
+
+**If you do not call tools and complete the issue, you have FAILED this task.**
+
+---
+
 ## User's Request
 
 Execute Linear issue: `{{issueId}}`
@@ -595,4 +611,17 @@ Display:
 
 ---
 
-**Remember:** Actually perform tool calls. Actually run validation. Actually create issues. Make it happen.
+## ⚠️ FINAL REMINDER ⚠️
+
+**This was an EXECUTABLE command, not documentation.**
+
+Did you:
+- ✅ Actually call the Linear MCP tools to fetch/update the issue?
+- ✅ Actually run `npm run typecheck` and parse the results?
+- ✅ Actually run the linting commands?
+- ✅ Actually call Sequential-thinking at decision points?
+- ✅ Actually launch TypeScript agents when needed?
+- ✅ Actually invoke /creatework for discovered issues?
+- ✅ Actually mark the issue as Done when complete?
+
+**If you just read this and said "Yes I'll do that" - YOU FAILED. GO BACK AND ACTUALLY EXECUTE.**

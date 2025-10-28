@@ -7,6 +7,22 @@ argument-hint: [description]
 
 **Your task:** Create a high-quality Linear issue based on the user's description.
 
+---
+
+## ⚠️⚠️⚠️ CRITICAL INSTRUCTION ⚠️⚠️⚠️
+
+**THIS IS AN EXECUTABLE COMMAND - NOT DOCUMENTATION**
+
+- ✋ **DO NOT** just read and acknowledge these steps
+- ✅ **DO** immediately begin executing them
+- 🔧 **ACTUALLY CALL** the MCP tools mentioned (Sequential-thinking, Linear, Serena, etc.)
+- ⚡ **START NOW** with Phase 1 below
+- 🎯 **YOU ARE EXECUTING THIS TASK RIGHT NOW** - not planning, not reviewing, EXECUTING
+
+**If you do not call tools and create a Linear issue, you have FAILED this task.**
+
+---
+
 ## User's Request
 
 The user wants to create a Linear issue with this description:
@@ -15,9 +31,9 @@ The user wants to create a Linear issue with this description:
 {{description}}
 ```
 
-## Instructions
+## Execution Steps
 
-Follow these steps to create a comprehensive Linear issue:
+**You are NOW executing these steps to create a comprehensive Linear issue. BEGIN IMMEDIATELY:**
 
 ### Phase 1: Requirement Extraction with Sequential Thinking
 
@@ -328,4 +344,17 @@ If the user specifies `--bulk` with multiple descriptions, handle each one separ
 
 ---
 
-**Remember:** This is an executable prompt. You must actually CALL the tools mentioned, not just describe what should happen. Actually perform the Sequential-thinking analyses and Linear API calls using the available MCP tools.
+## ⚠️ FINAL REMINDER ⚠️
+
+**This was an EXECUTABLE command, not documentation.**
+
+Did you:
+- ✅ Actually call Sequential-thinking 3 times (requirements, duplicates, structure)?
+- ✅ Actually search Linear for duplicate issues?
+- ✅ Actually call the Linear MCP tool to CREATE the issue?
+- ✅ Actually receive a Linear issue ID back (like TRG-123)?
+- ✅ Actually display the success message with metrics?
+
+**If you just read this and said "Yes I'll do that" - YOU FAILED. GO BACK AND ACTUALLY EXECUTE.**
+
+**If you did not receive a Linear issue ID, you did NOT create an issue - you FAILED this task.**
