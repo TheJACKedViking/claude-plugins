@@ -210,64 +210,116 @@ After research/analysis (if performed), you should have:
    - Use action-based language ("Implement X", "Fix Y", "Add Z")
    - Include key context
 
-2. **Build comprehensive description** with this format:
+2. **Build comprehensive description using PRD format**:
+
+   **Reference**: See `PRD_TEMPLATE.md` in the work plugin for complete guidelines.
+
+   **PRD Structure** (adapt based on issue type - feature/bug/discovery/error-fix):
 
 ```markdown
-## 📋 Requirements ([N] items)
+## Overview
 
-1. ✅ [Requirement 1]
-2. ✅ [Requirement 2]
-...
+### The Problem
+[1-2 sentences describing the issue, bug, or opportunity from user's description]
 
-## 💡 AI-Suggested Additional Requirements
+### Why It Matters
+- **User Impact**: [How this affects users]
+- **Business Impact**: [Why this is important]
+- **Technical Impact**: [System/codebase implications]
 
-1. 🤖 [Suggested requirement] (confidence: [X]%)
-...
+### Context
+[Background, links to discussions, related issues if known]
 
-## 🔧 Technical Specifications
+## Out of Scope
 
-- **Complexity:** [simple/moderate/complex]
-- **Estimated effort:** [hours]
-- **Files likely to modify:** [file list if known]
-- **Dependencies:** [dependency list]
-- **Patterns to follow:** [pattern list]
+The following are explicitly NOT part of this issue:
+- [Item 1 that might seem related but isn't included]
+- [Item 2 that will be handled separately]
+- [Future considerations noted during analysis]
 
-## ✔️ Validation Criteria
+## Solution
 
-- [ ] [Validation criterion 1]
-- [ ] [Validation criterion 2]
-...
+### Approach
+[High-level description of how this will be solved - from Sequential-thinking analysis]
 
-## ⚠️ Edge Cases to Handle
+### User Stories
+- **US-1**: As a [role], I want [action] so I can [outcome]
+- **US-2**: As a [role], I want [action] so I can [outcome]
 
-- [Edge case 1]
-- [Edge case 2]
-...
+### Key Implementation Notes
+- [Technical note 1 from requirements extraction]
+- [Technical note 2 from research/codebase analysis]
+- Files/components: `[file paths if known from Serena MCP]`
+- Patterns to follow: [from existing codebase if discovered]
 
-## 📝 Implementation Checklist
+## Technical Requirements
 
-- [ ] [Step 1]
-- [ ] [Step 2]
-- [ ] [Step 3]
-- [ ] Tests passing
-- [ ] Code review approved
+### Constraints
+- **Must use**: [Required technology/library/pattern]
+- **Cannot use**: [Forbidden approaches if any]
+- **Must preserve**: [Existing behavior/backward compatibility requirements]
 
-## 📊 Success Metrics
+### Dependencies
+- **Requires**: [Other issues, external dependencies]
+- **Related**: [Similar issues if found during duplicate check]
 
-- All requirements implemented: Yes/No
-- All validation passing: Yes/No
-- All edge cases handled: Yes/No
-- Zero scope creep: Yes/No
+### Code References
+- Files to modify: `[file paths from Serena MCP analysis]`
+- Components affected: `[component names]`
+- APIs/services: `[endpoints/services from research-expert]`
 
-## 🤖 AI Metadata
+### Performance/Security
+- [Performance requirements if applicable]
+- [Security considerations from analysis]
+
+## Acceptance Criteria
+
+### Functional Requirements
+- [ ] [Explicit requirement 1 from Phase 1]
+- [ ] [Explicit requirement 2 from Phase 1]
+- [ ] [Explicit requirement N]
+
+### AI-Suggested Requirements
+- [ ] 🤖 [Implicit requirement 1] (confidence: [X]%)
+- [ ] 🤖 [Implicit requirement 2] (confidence: [X]%)
+
+### Technical Validation
+- [ ] All type checks passing (`npm run typecheck`)
+- [ ] All linting passing (`npm run lint`)
+- [ ] All tests passing (if applicable)
+- [ ] Code reviewed by typescript-expert (if TS/JS changes)
+
+### Edge Cases
+- [ ] [Edge case 1 handled]
+- [ ] [Edge case 2 handled]
+
+## Open Questions
+
+- **Q1**: [Question needing investigation]
+  - Status: To investigate
+  - Decision: TBD
+
+- **Q2**: [Technical tradeoff to consider]
+  - Option A: [Pro/con]
+  - Option B: [Pro/con]
+  - Decision: TBD
+
+---
+
+## AI Metadata
 
 ```json
 {
   "complexity": "[simple/moderate/complex]",
   "estimatedHours": [X],
   "requirementCount": [N],
-  "createdBy": "Claude Code /creatework command",
-  "createdAt": "[timestamp]"
+  "createdBy": "Claude Code /creatework",
+  "createdAt": "[ISO timestamp]",
+  "sequentialThinkingUsed": true,
+  "duplicatesChecked": [N],
+  "researchPerformed": [true/false],
+  "codebaseAnalyzed": [true/false],
+  "prdVersion": "1.0"
 }
 ```
 ```
