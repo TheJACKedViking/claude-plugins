@@ -1,11 +1,11 @@
 {
-  "version": "1.8.0",
+  "version": "1.8.1",
   "plugins": [
     {
       "id": "work",
       "enabled": true,
-      "installedVersion": "1.8.0"
+      "installedVersion": "1.8.1"
     }
   ],
-  "lastUpdated": "2025-10-30T02:27:11.426Z"
+  "lastUpdated": "2025-10-31T02:27:11.426Z"
 }
