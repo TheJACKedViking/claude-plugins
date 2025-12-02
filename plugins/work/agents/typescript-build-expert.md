@@ -1,6 +1,7 @@
 ---
 name: typescript-build-expert
 description: TypeScript Build Expert - Compiler configuration, build optimization, module resolution, and build tool integration specialist
+model: opus
 tools: Read, Bash, Glob, Grep, Edit, MultiEdit, Write
 category: framework
 color: blue

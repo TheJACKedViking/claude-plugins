@@ -1,1437 +1,918 @@
 ---
-description: Execute Linear issues with requirement adherence, mandatory type checking, and truthful documentation
-argument-hint: [issueId]
+description: Execute Linear issues with zero-error enforcement, mandatory validation, and truthful documentation
+argument-hint: [issueId] [--resume]
 ---
 
-# Execute Linear Issue - Executable Instructions
+# Execute Linear Issue
 
-**Your task:** Execute a Linear issue with perfect requirement adherence, mandatory type checking, and truthful documentation.
+Execute issue `{{issueId}}` with requirement adherence, type safety, and verified completion.
 
----
-
-## ⚠️⚠️⚠️ CRITICAL INSTRUCTION ⚠️⚠️⚠️
-
-**THIS IS AN EXECUTABLE COMMAND - NOT DOCUMENTATION**
-
-- ✋ **DO NOT** just read and acknowledge these steps
-- ✅ **DO** immediately begin executing them
-- 🔧 **ACTUALLY CALL** the MCP tools mentioned (Linear, Sequential-thinking, TypeScript agents, etc.)
-- ⚡ **START NOW** with Phase 0 below
-- 🎯 **YOU ARE EXECUTING THIS TASK RIGHT NOW** - not planning, not reviewing, EXECUTING
-
-**If you do not call tools and complete the issue, you have FAILED this task.**
+> **CRITICAL**: This is an EXECUTABLE command. Call the MCP tools. Make the edits. Run the validations. Do not just read and acknowledge.
 
 ---
 
-## User's Request
+## §1 Configuration
 
-Execute Linear issue: `{{issueId}}`
+All thresholds and settings. Reference by name elsewhere.
 
----
+```yaml
+execution:
+  total_timeout_minutes: 45
 
-## Reusable Patterns
+agents:
+  max_concurrent: 3
+  max_waves: 3
+  spawn_delay_ms: 500
+  wave_timeout_minutes: 5
 
-### Pattern: Sequential-Thinking
+thresholds:
+  # Fast-path (simplified flow)
+  fast_path:
+    max_requirements: 3
+    max_files: 2
+    keywords: ["typo", "fix typo", "minor", "small", "trivial", "quick", "rename"]
+
+  # Ultra-fast-path (minimal flow)
+  ultra_fast:
+    max_files: 1
+    max_lines_changed: 10
+    keywords: ["typo", "comment", "rename variable"]
+
+  # Parallel deployment triggers
+  parallel:
+    files_for_review: 4          # Deploy 2+ agents if files >= this
+    files_per_agent: 4           # Files assigned per agent
+    type_errors_wave2: 20        # Deploy 2+ agents if errors >= this
+    type_errors_wave3: 50        # Deploy 3+ agents if errors >= this
+    lint_errors_parallel: 30     # Deploy 2+ agents if errors >= this
+
+linear_mcp:
+  retry_delays: [15, 20, 25, 30] # Rolling delays in seconds
+  total_timeout: 120             # 2 minutes max
+  retryable: ["proxy error", "timeout", "502", "503", "504", "ETIMEDOUT", "ECONNRESET"]
+
+sequential_thinking:
+  # TIER 1: Always use (critical decisions)
+  tier1: ["orchestration_strategy", "follow_up_assessment", "escape_hatch"]
+  # TIER 2: Use if complexity > simple
+  tier2: ["wave_failure_analysis", "business_logic_assessment"]
+  # TIER 3: Skip for fast-path
+  tier3: ["requirement_analysis", "code_review_strategy"]
 ```
-mcp__sequential-thinking__sequentialthinking:
-  thought: "[Context]. I need to: 1) [decision 1], 2) [decision 2], 3) [decision 3]..."
-  thoughtNumber: 1
-  totalThoughts: [4-8]
-  nextThoughtNeeded: true
+
+---
+
+## §2 Execution State
+
+Initialize at Phase 1. Update throughout. Reference for decisions.
+
+```javascript
+execution_state = {
+  issue_id: "{{issueId}}",
+  mode: "full",              // "ultra_fast" | "fast" | "full"
+  start_time: null,
+
+  // Cache (populate once, reuse)
+  cache: {
+    files_modified: [],      // From git diff, set in Phase 1
+    requirements: [],        // Parsed from issue, set in Phase 1
+    error_groups: {},        // By file and type, set in Phase 5
+  },
+
+  // Tracking
+  phases_completed: [],
+  agents_deployed: 0,
+  waves_executed: 0,
+
+  // Results
+  type_errors: { initial: 0, fixed: 0, remaining: 0 },
+  lint_errors: { initial: 0, fixed: 0, remaining: 0 },
+  tracking_issues: [],
+  commit_hash: null,
+
+  // Checkpoint (for resume)
+  checkpoint: {
+    phase: 0,
+    timestamp: null,
+    resumable: true
+  }
+}
 ```
 
-### Pattern: Agent Launch
-```
-Task tool with subagent_type: [agent-name]
-Prompt: "[Action] [specific task]
+**Update Rule**: After each phase, set `execution_state.phases_completed.push(phase_number)` and `execution_state.checkpoint.phase = phase_number`.
 
-Context: Issue {{issueId}} - [brief description]
-[Relevant data: errors/files/requirements]
+---
+
+## §3 Decision Tables
+
+### 3.1 Execution Mode Detection
+
+| Condition | Mode | Flow |
+|-----------|------|------|
+| Title matches ultra_fast.keywords AND expected files ≤ 1 | `ultra_fast` | Phases 1→3→5→8 |
+| Title matches fast_path.keywords OR requirements ≤ 3 | `fast` | Skip orchestration, simplified review |
+| Otherwise | `full` | All phases |
+
+### 3.2 Agent Selection by Error Type
+
+| Error Codes | Agent | Use Case |
+|-------------|-------|----------|
+| TS2344, TS2536, TS2589, TS2xxx (type system) | `typescript-type-expert` | Generics, recursion, complex types |
+| TS2307, TS2792, TS6xxx (module) | `typescript-build-expert` | Imports, resolution, config |
+| Mixed or general | `typescript-expert` | Default for TypeScript issues |
+| ESLint, Prettier | `linting-expert` | Style and lint rules |
+| Logic, correctness | `code-review-expert` | Business logic validation |
+
+### 3.3 Error Escalation Path
+
+```
+Wave 1 fails → Wave 2 (different strategy) → Wave 3 (architectural assessment)
+                                                        ↓
+                                               Create tracking issues
+                                                        ↓
+                                               Quality Gate: CONDITIONAL PASS
+```
+
+### 3.4 Status Transitions
+
+| Event | Status | Reversible |
+|-------|--------|------------|
+| Execution starts | In Progress | Yes |
+| Blocking dependency found | On Hold | Yes |
+| Implementation complete | In Review | Yes |
+| Duplicate detected | Duplicate | No |
+| Fatal error | Cancelled | No |
+| All criteria met | Done | No |
+
+---
+
+## §4 Patterns
+
+Named reusable patterns. Reference as `[PATTERN_NAME]`.
+
+### [LINEAR_CALL]
+
+All Linear MCP calls use retry on transient errors:
+1. Call tool
+2. IF error matches `linear_mcp.retryable` → wait (rolling 15-30s) → retry
+3. IF timeout (2 min total) → STOP with "Linear MCP unavailable"
+4. IF non-retryable error → fail immediately
+
+### [AGENT_DEPLOY]
+
+Parallel agent deployment template:
+```
+Task tool with subagent_type: [AGENT_TYPE]
+Prompt: "[ACTION] for issue {{issueId}}
+
+Assigned: [FILES or ERRORS]
 
 Deliverables:
-1. [Specific output 1]
-2. [Specific output 2]
-3. Create tracking issues via /work:creatework for out-of-scope concerns"
+1. [SPECIFIC_OUTPUT]
+2. Report changes made
+3. Use /work:creatework for out-of-scope concerns"
 ```
 
-### Pattern: Re-Validation
-```
-Run [command] → Parse output (count total, by file, by type) → Report results →
-[IF errors] Apply fix strategy → Re-run validation → Report delta (fixed/remaining)
-```
+For parallel: Send multiple Task calls in single message.
 
-### Pattern: Parallel Agents
-When agents address **independent concerns** (different file sets, distinct error categories), launch in parallel using multiple Task calls in single message. **Do NOT use if:** agents conflict on same files, one error dominates >80%, or errors are related.
+### [VALIDATE]
+
+Type check + lint cycle:
+1. Run `npm run typecheck` → parse errors → group by file/code
+2. Run `npm run lint` → parse errors → note auto-fixable
+3. Store counts in `execution_state`
+4. Report: `"Type: [N] errors in [N] files | Lint: [N] errors, [N] auto-fixable"`
+
+### [CHECKPOINT]
+
+Save state for resume capability:
+1. Create checkpoint comment on Linear issue:
+   ```markdown
+   🔄 **Checkpoint: Phase [N]**
+   ```json
+   {
+     "phase": [N],
+     "timestamp": "[ISO]",
+     "state": { "phases_completed": [...], "files_modified": [...] }
+   }
+   ```
+   ```
+2. Update `execution_state.checkpoint`
+
+### [SERENA_EDIT]
+
+Mandatory for symbol-level code changes:
+1. `mcp__serena__get_symbols_overview` → understand structure
+2. `mcp__serena__find_symbol(name_path, include_body: true)` → get current code
+3. Edit using:
+   - `mcp__serena__replace_symbol_body` for function/method rewrites
+   - `mcp__serena__insert_after_symbol` for new code after existing
+   - `mcp__serena__insert_before_symbol` for imports, decorators
+4. Use `Edit` tool only for: config files, markdown, single-line non-function changes
 
 ---
 
-## 🚀 MAXIMUM PARALLELIZATION MODE
+## §5 Execution Phases
 
-**THIS COMMAND OPERATES IN AGGRESSIVE MULTI-AGENT ORCHESTRATION MODE BY DEFAULT**
+### Phase 1: Initialize
 
-### Core Philosophy
+**GATE**: Issue ID provided
 
-**Zero Errors, Maximum Speed, Full Completion**
+**DO**:
 
-1. **Deploy Multiple Agents Simultaneously**: ALL phases use parallel agent deployment when possible
-2. **Cascading Subagents**: Each orchestrator agent spawns its own typescript-expert subagents for granular work
-3. **Zero-Error Enforcement**: Validation errors trigger iterative waves of agents until 0 errors achieved
-4. **Full Completion Mandate**: Creating tracking issues is a LAST RESORT - deploy more agents first
-5. **No Business Logic Issues**: All functions validated for correctness, not just type safety
+1. **Check for resume**:
+   ```
+   IF "--resume" flag OR previous checkpoint exists:
+     → Parse last checkpoint from Linear comments
+     → Set execution_state from checkpoint
+     → SKIP to checkpoint.phase + 1
+   ```
 
-### Parallelization Thresholds (AUTOMATIC)
-
-| Metric | Threshold | Action |
-|--------|-----------|--------|
-| Modified files | >6 files | Deploy 2+ typescript-expert agents (1 per 3-5 files) |
-| Type errors | >20 errors | Deploy 2+ type-resolution agents in parallel |
-| Type errors | >50 errors | Deploy 3+ type-resolution agents in parallel |
-| Type errors | >5 files | Deploy 2+ agents by file grouping |
-| Linting errors | >30 errors | Deploy 2+ linting-expert agents in parallel |
-| Distinct modules | >3 modules | Deploy 1 agent per module in parallel |
-
-### Iterative Wave Strategy
-
-**Wave 1**: Deploy initial parallel agents based on thresholds
-**Re-validate**: Run typecheck/lint again
-**Wave 2** (if errors remain): Use Sequential-thinking to analyze failure → Deploy additional agents with different strategy
-**Re-validate**: Run typecheck/lint again
-**Wave 3** (if errors still remain): Use Sequential-thinking to determine if truly architectural → Only then create tracking issues
-
-### Agent Hierarchy
-
-```
-Main Execution (performwork)
-    ↓
-Phase Orchestrator Agents (parallel, per phase/error-type/module)
-    ↓
-TypeScript-Expert Subagents (parallel, per file/component)
-```
-
-Each orchestrator agent is instructed to spawn multiple typescript-expert subagents for the files/modules it manages.
-
-### Quality Gates (NON-NEGOTIABLE)
-
-- **Gate 1**: Post-implementation → Zero TypeScript errors OR Wave 2 deployment
-- **Gate 2**: Post-Wave-2 → Zero TypeScript errors OR Wave 3 deployment
-- **Gate 3**: Post-linting → Zero linting errors OR Wave 2 deployment
-- **Gate 4**: Business logic validation → Zero logic issues OR remediation
-
-**Progression blocked until each gate passes.**
-
----
-
-## Error Handling Framework
-
-**Philosophy: Deploy Agents Until Zero Errors - Creating Tracking Issues is LAST RESORT**
-
-| Scenario | Action | Fatal? | Next |
-|----------|--------|--------|------|
-| Linear MCP unavailable | Report + suggest manual update | Yes | STOP |
-| Issue not found | Report with issue ID | Yes | STOP |
-| Status update fails | Log warning | No | CONTINUE |
-| Typecheck fails to run | Report + suggest npm install | Yes | DO NOT mark Done |
-| Linting fails to run | Report + suggest install tools | Conditional | DO NOT mark Done if configured |
-| **Type errors found** | **Deploy Wave 1 parallel agents** | **No** | **Fix → Re-validate → Wave 2 if needed → Wave 3 if still errors** |
-| **Linting errors found** | **Auto-fix → Deploy parallel agents if remain** | **No** | **Fix → Re-validate → Wave 2 if needed** |
-| **Business logic issues** | **Deploy validation agents → Fix issues** | **Varies** | **Fix critical → Track non-critical** |
-| **Wave 1 agents fail** | **Sequential-thinking analysis → Wave 2** | **No** | **Deploy Wave 2 with different strategy** |
-| **Wave 2 agents fail** | **Sequential-thinking analysis → Wave 3** | **No** | **Assess architectural → Create tracking issues ONLY if confirmed** |
-| **Quality gate blocked** | **Deploy additional agents or create tracking issues** | **Varies** | **DO NOT proceed until gate passes** |
-| Agent fails | Assess with Sequential-Thinking | Varies | Retry or different agent |
-| Implementation fails | Apply Sequential-Thinking for severity | Varies | Fix or Cancel |
-
-**Key Changes from Default Behavior:**
-1. **Type/Linting Errors**: Deploy up to 3 waves of agents before creating tracking issues
-2. **Parallel by Default**: Use parallel agents whenever thresholds are met
-3. **Zero-Error Enforcement**: Quality gates BLOCK progression until errors = 0 OR tracking issues created
-4. **Business Logic**: New mandatory validation phase for correctness
-5. **Tracking Issues**: Only created after 2-3 agent waves OR Sequential-thinking confirms architectural
-
----
-
-## Status Management Reference
-
-| Status | When Set | Purpose |
-|--------|----------|---------|
-| **In Progress** | After successful fetch | Work started |
-| **On Hold** | Blocking dependencies discovered | Waiting for prerequisites |
-| **In Review** | Implementation complete | Ready for validation (optional) |
-| **Duplicate** | Duplicate detected | Mark redundant |
-| **Cancelled** | Fatal error | Work abandoned |
-| **Done** | All criteria met | Work complete |
-
-**Note:** All status updates are non-fatal. If update fails, log warning and continue.
-
----
-
-## Phase 0: Fetch Issue from Linear
-
-1. **Fetch issue:**
+2. **Fetch issue** using [LINEAR_CALL]:
    ```
    Tool: mcp__linear__get_issue
-   Parameters: id: "{{issueId}}"
+   Parameters: { id: "{{issueId}}" }
+   ```
+   IF not found → STOP "Issue {{issueId}} not found"
+
+3. **Display issue**:
+   ```
+   📋 {{issueId}}: [title]
+   Status: [state] | Priority: [priority]
    ```
 
-2. **If issue not found:** Apply Error Handling Framework (Issue not found) → STOP
+4. **Parse and cache requirements**:
+   - Extract checkboxes/bullets from description
+   - Store in `execution_state.cache.requirements`
+   - IF none found → use title as single requirement
 
-3. **Display issue info:**
+5. **Detect execution mode** (see Decision Table 3.1):
    ```
-   📋 Issue: {{issueId}}
-   Title: [title]
-   Status: [state]
-   Priority: [priority]
+   IF ultra_fast criteria met → mode = "ultra_fast"
+   ELSE IF fast_path criteria met → mode = "fast"
+   ELSE → mode = "full"
+   ```
+   Report: `"⚡ Mode: [mode]"`
+
+6. **Cache file list** (run once, reuse everywhere):
+   ```bash
+   git diff --name-only HEAD
+   ```
+   Store in `execution_state.cache.files_modified`
+
+7. **Check for Sentry context** (if error-fix issue):
+   ```
+   IF description mentions error pattern OR Sentry ID:
+     Tool: mcp__sentry__search_issues
+     Parameters: { organizationSlug: "...", naturalLanguageQuery: "[error pattern]" }
+     → Extract stack traces, affected files
+     → Add to context for implementation
    ```
 
-4. **Extract requirements:** Parse "## 📋 Requirements" section → Extract checkboxes/bullets → If none found, report: "⚠️ No clear requirements. Proceeding with title as requirement."
-
-5. **Fetch workflow states (non-fatal):**
-   ```
-   Tool: mcp__linear__list_issue_statuses
-   Parameters: team: [team from issue]
-   ```
-   Store state names for later. If fails, continue with defaults.
-
-6. **[OPTIONAL] Check for duplicate:**
-
-   **When:** Issue title/description suggests potential duplication.
-
-   a. **Apply Sequential-Thinking:** Context: issue {{issueId}} with title '[title]'. Determine: 1) Duplication risk? 2) Search terms? 3) Should check before starting?
-
-   b. **If check recommended:** Search recent issues via `mcp__linear__list_issues` → Compare → Calculate similarity
-
-   c. **If duplicate found (>80% similar):**
-   ```
-   Tool: mcp__linear__update_issue
-   Parameters: id: "{{issueId}}", state: "Duplicate"
-   ```
-   Add comment explaining duplication → Report: "🔗 Issue {{issueId}} is duplicate of [ISSUE-ID]. Marked as Duplicate." → **STOP**
-
-7. **Update status to In Progress:**
-   ```
-   Tool: mcp__linear__update_issue
-   Parameters: id: "{{issueId}}", state: "In Progress"
-   ```
-   Display: "▶️ Issue {{issueId}} → 'In Progress'" → Error handling: Reference framework (status update)
-
----
-
-## Phase 0.5: Multi-Agent Orchestration Strategy
-
-**[MANDATORY - AUTOMATIC PLANNING FOR MAXIMUM PARALLELIZATION]**
-
-### Purpose
-Plan parallel agent deployment across ALL phases to maximize speed and ensure zero-error completion.
-
-### Step 1: Analyze Issue Complexity
-
-Use Sequential-thinking to assess:
-
-```
-mcp__sequential-thinking__sequentialthinking:
-  thought: "Issue {{issueId}}: '[title]'. Requirements: [list]. I need to determine: 1) Expected number of files to modify (estimate), 2) Likely error volume (small <10, medium 10-50, large >50), 3) Module boundaries (frontend/backend/shared/etc), 4) Optimal parallel agent strategy per phase, 5) Cascading subagent needs, 6) Risk of architectural issues requiring separate work."
-  thoughtNumber: 1
-  totalThoughts: 6
-  nextThoughtNeeded: true
-```
-
-### Step 2: Plan Parallel Deployment
-
-Based on Sequential-thinking output, determine:
-
-**Phase 2.3 (Code Review) Strategy:**
-- Files to modify: [N] → Deploy [N÷4] typescript-expert agents (rounded up, 1 per 3-5 files)
-- Modules identified: [list] → Group files by module, 1 agent per module
-- Deploy agents: [✅ Parallel / ⚠️ Sequential if <4 files]
-
-**Phase 3.5 (Type Error Resolution) Strategy:**
-- Expected errors: [estimate]
-- If >20 errors: Deploy 2+ agents in Wave 1
-- If >50 errors: Deploy 3+ agents in Wave 1
-- If errors span >3 modules: Deploy 1 agent per module
-- Error category distribution: [type-system/module-resolution/mixed]
-- Agent selection: [typescript-type-expert / typescript-build-expert / typescript-expert / multiple in parallel]
-
-**Phase 3.7 (Linting) Strategy:**
-- Expected linting errors: [estimate]
-- If >30 errors: Deploy 2+ linting-expert agents in parallel
-- Auto-fix first: ✅ Yes (always attempt auto-fix before agents)
-
-**Phase 3.9 (Business Logic) Strategy:**
-- Critical functions to validate: [list]
-- Deploy code-review-expert: ✅ Yes (if >3 complex functions modified)
-
-### Step 3: Declare Orchestration Plan
-
-Display orchestration plan to user:
-
-```
-🎯 Multi-Agent Orchestration Plan
-
-📊 Complexity Assessment:
-- Files to modify: ~[N]
-- Expected type errors: ~[N]
-- Expected lint errors: ~[N]
-- Modules: [list]
-- Complexity: [Simple / Moderate / Complex / Very Complex]
-
-🤖 Parallel Agent Deployment Strategy:
-
-Phase 2.3 (Code Review):
-→ Deploy [N] typescript-expert agents in parallel
-→ Grouping: [by file / by module]
-
-Phase 3.5 (Type Errors):
-→ Wave 1: Deploy [N] agents in parallel
-→ Error threshold: [N] errors → automatic Wave 2 if not 0
-→ Agents: [list agent types]
-
-Phase 3.7 (Linting):
-→ Auto-fix attempt first
-→ If errors remain: Deploy [N] linting-expert agents
-
-Phase 3.9 (Business Logic):
-→ Deploy [N] code-review-expert agents
-→ Focus: [specific functions/modules]
-
-🎯 Quality Gates:
-- Gate 1: Zero type errors (iterative waves)
-- Gate 2: Zero linting errors (iterative waves)
-- Gate 3: Zero business logic issues
-- Gate 4: All requirements met
-
-⚡ Expected timeline:
-- Wave 1 agents: [N] running in parallel
-- Estimated completion: [faster than sequential]
-```
-
-### Step 4: Proceed to Phase 1
-
-With orchestration plan established, proceed to Phase 1.
-
----
-
-## Phase 1: Requirement Analysis with Agents
-
-**Step 1:** Extract requirements → Parse issue description → Identify explicit/implicit needs → Note edge cases
-
-**Step 2:** Choose analysis approach:
-
-**Option A - Sequential-Thinking** (straightforward issues):
-
-Apply Sequential-Thinking: Issue {{issueId}}: '[title]'. Requirements: [list]. Determine: 1) What to implement, 2) Files to modify, 3) Use feature-dev agent or direct implementation, 4) Complexity/risk, 5) Implementation approach, 6) Edge cases.
-
-**Option B - Research-Expert** (unfamiliar tech/APIs/libraries):
-
-Apply Pattern: Agent Launch with research-expert:
-```
-Task: "Research [technology/API/pattern] for: [requirement description]
-
-Context: Issue {{issueId}} requires [what's needed]
-
-Deliverables:
-1. Key concepts and mechanisms
-2. Best practices and patterns
-3. Pitfalls to avoid
-4. Example implementations"
-```
-
-**Use Parallel Agents** when: research AND code exploration both needed (independent concerns). Reference Pattern: Parallel Agents.
-
-**Step 3:** Determine from analysis:
-- Implementation approach (direct/agent/research)
-- Files to modify
-- Complexity (simple/moderate/complex)
-- Risks and edge cases
-
-Display:
-```
-🧠 Analysis:
-- Approach: [direct/agent/research]
-- Complexity: [level]
-- Files: [list]
-- Risks: [list]
-```
-
----
-
-## Phase 1.5: Code Discovery with Serena MCP
-
-**[MANDATORY for modifying existing code]**
-
-**Workflow:**
-1. `mcp__serena__get_symbols_overview(file)` → Understand structure → Identify symbols to modify
-2. `mcp__serena__find_symbol(name_path, include_body: true, depth: 1)` → Locate code + children
-3. `mcp__serena__find_referencing_symbols(name_path)` → Assess impact → Determine if backward-compatible
-4. **[IF needed]** `mcp__serena__search_for_pattern(substring_pattern, relative_path)` → Find similar code
-
-**Output:** File:line references, symbol structure understanding, dependency awareness, safe edit context
-
-**Proceed to Phase 2 with gathered information.**
-
----
-
-## Phase 2: Implementation
-
-### Option A: Direct Implementation
-
-**[IF simple and files known]:**
-
-1. Use Serena MCP (Phase 1.5) for code discovery if modifying existing code
-2. **For symbol-level edits:** Use Serena's tools (`mcp__serena__replace_symbol_body`, `insert_after_symbol`, `insert_before_symbol`)
-3. **For line-level edits:** Use Edit tool after identifying exact locations
-4. Explain changes with file:line references
-
-### Option B: Agent-Based Implementation
-
-**[IF moderate/complex or needs architecture analysis]:**
-
-1. Apply Pattern: Agent Launch with appropriate agent:
-   - New features: `feature-dev:code-architect`
-   - Exploration: `feature-dev:code-explorer`
-   Provide: issue title, requirements, expected deliverables
-
-2. Wait for agent completion → Review results
-
-3. Implement based on recommendations → Follow architecture plan → Edit identified files
-
-### Discovery Tracking
-
-**If new issues discovered during implementation:**
-
-1. Document: what discovered, why separate concern, priority assessment
-
-2. **Apply Sequential-Thinking:** Discovery: '[description]' during {{issueId}}. Determine: 1) Within scope or separate? 2) Blocking? 3) Priority? 4) Fix now or create issue? 5) Put current work 'On Hold'?
-
-3. **If separate issue needed:** Use `/work:creatework` with clear description → Link to current issue → Report created issue ID
-
-4. **If blocking (requires completion before current work):**
+8. **Update status** using [LINEAR_CALL]:
    ```
    Tool: mcp__linear__update_issue
-   Parameters: id: "{{issueId}}", state: "On Hold"
+   Parameters: { id: "{{issueId}}", state: "In Progress" }
+   ```
 
-   Tool: mcp__linear__create_comment
+**STATE_UPDATE**: `phases_completed.push(1)`, `checkpoint.phase = 1`
+
+**NEXT**:
+- IF mode = "ultra_fast" → Phase 3
+- IF mode = "fast" → Phase 2 (skip orchestration)
+- IF mode = "full" → Phase 2
+
+---
+
+### Phase 2: Analyze
+
+**GATE**: Phase 1 complete
+
+**DO**:
+
+1. **Orchestration planning** (SKIP if mode ≠ "full"):
+
+   Use Sequential-thinking [TIER 1]:
+   ```
+   Tool: mcp__sequential-thinking__sequentialthinking
    Parameters:
-     issueId: "{{issueId}}"
-     body: "⏸️ Work paused - blocked by [BLOCKER-ID]: [description]"
+     thought: "Issue {{issueId}}: '[title]'. Requirements: [count].
+               Determine: 1) Files to modify, 2) Error volume estimate,
+               3) Module boundaries, 4) Parallel agent strategy, 5) Risk assessment"
+     thoughtNumber: 1
+     totalThoughts: 5
+     nextThoughtNeeded: true
    ```
-   Report: "⏸️ Issue {{issueId}} → 'On Hold'. Blocked by: [BLOCKER-ID]" → **STOP**
+
+   Store orchestration plan for later phases.
+
+2. **Documentation lookup** (if unfamiliar libraries):
+   ```
+   IF description mentions unfamiliar library/API:
+     Tool: mcp__context7__resolve-library-id
+     Parameters: { libraryName: "[library]" }
+
+     IF found:
+       Tool: mcp__context7__get-library-docs
+       Parameters: { context7CompatibleLibraryID: "[id]", topic: "[relevant]" }
+     ELSE:
+       → Deploy research-expert agent
+   ```
+
+3. **Code discovery** using Serena:
+   ```
+   Tool: mcp__serena__get_symbols_overview
+   Parameters: { relative_path: "[relevant file]" }
+
+   Tool: mcp__serena__find_symbol
+   Parameters: { name_path: "[component]", include_body: false, depth: 1 }
+
+   IF modifying existing code:
+     Tool: mcp__serena__find_referencing_symbols
+     Parameters: { name_path: "[symbol]", relative_path: "[file]" }
+   ```
+
+4. **Report analysis**:
+   ```
+   🧠 Analysis:
+   - Files to modify: [list]
+   - Complexity: [simple|moderate|complex]
+   - Parallel agents planned: [count]
+   ```
+
+**STATE_UPDATE**: `phases_completed.push(2)`, store analysis results
+
+**NEXT**: Phase 3
 
 ---
 
-## Phase 2.3: Parallel TypeScript/JavaScript Code Review (MANDATORY)
+### Phase 3: Implement
 
-**[MANDATORY IF ANY .ts/.tsx/.js/.jsx/.mjs/.cjs/.vue files modified - NO EXCEPTIONS]**
+**GATE**: Phase 2 complete (or Phase 1 if ultra_fast)
 
-**[AUTOMATIC PARALLEL DEPLOYMENT BASED ON PHASE 0.5 STRATEGY]**
+**DO**:
 
-### Step 1: Identify Modified Files
+1. **Choose implementation approach**:
 
-List changed TypeScript/JavaScript files:
-```bash
-git diff --name-only | grep -E '\.(ts|tsx|js|jsx|mjs|cjs|vue)$'
-```
+   | Complexity | Approach |
+   |------------|----------|
+   | Simple, files known | Direct implementation |
+   | Moderate | Single feature-dev agent |
+   | Complex, architectural | feature-dev:code-architect agent |
 
-Count files: [N]
+2. **Direct implementation** (simple cases):
+   - Use [SERENA_EDIT] for all symbol-level changes
+   - Use `Edit` tool only for config/markdown
+   - Explain changes with file:line references
 
-### Step 2: Determine Parallelization Strategy
+3. **Agent-based implementation** (moderate/complex):
+   ```
+   Task tool with subagent_type: "feature-dev:code-architect"
+   Prompt: "Implement requirements for {{issueId}}: [title]
 
-Based on Phase 0.5 orchestration plan + actual file count:
+   Requirements:
+   [list from cache]
 
-| File Count | Strategy |
-|------------|----------|
-| 1-3 files | Single typescript-expert agent (sequential) |
-| 4-6 files | 2 typescript-expert agents in parallel |
-| 7-12 files | 3 typescript-expert agents in parallel |
-| 13+ files | 4+ typescript-expert agents in parallel (1 per 3-4 files) |
+   Deliverables:
+   1. Architecture design
+   2. Implementation plan
+   3. File changes with rationale"
+   ```
 
-**Module-Based Grouping** (preferred if >3 modules):
-- Identify modules: frontend/, backend/, shared/, etc.
-- Deploy 1 typescript-expert agent per module in parallel
-- Each agent handles all files in its module
+4. **Discovery tracking**:
+   ```
+   IF new issue discovered during implementation:
+     → Use /work:creatework with clear description
+     → Link to current issue
+     → Report created issue ID
 
-### Step 3: Deploy Parallel Typescript-Expert Agents
+   IF blocking dependency found:
+     → Update status to "On Hold" using [LINEAR_CALL]
+     → Create comment explaining blocker
+     → STOP "Blocked by [BLOCKER-ID]"
+   ```
 
-**[IF 1-3 files]** → Single agent (skip to Step 3A)
+5. **Update file cache**:
+   ```bash
+   git diff --name-only HEAD
+   ```
+   Update `execution_state.cache.files_modified`
 
-**[IF 4+ files OR multiple modules]** → Parallel agents:
+**STATE_UPDATE**: `phases_completed.push(3)`, record files modified
 
-**Example Multi-Agent Deployment** (adapt based on actual file grouping):
+**CHECKPOINT**: Apply [CHECKPOINT] pattern
 
-```
-# Launch multiple agents in parallel (single message, multiple Task calls)
-
-Agent 1 - typescript-expert:
-Task: "Review and refine TypeScript/JavaScript code for [Module A / Files 1-4].
-
-Context: Issue {{issueId}} - Parallel code review (Agent 1 of [N])
-
-Files assigned:
-- [file 1]
-- [file 2]
-- [file 3]
-
-**IMPORTANT**: For complex modules, spawn your own typescript-expert SUBAGENTS:
-- If module has >3 files, launch 1 subagent per file
-- Each subagent focuses on deep review of single file
-- Coordinate subagent findings into cohesive report
-
-Deliverables:
-1. Review for type safety, best practices, code quality
-2. Refine/rewrite to meet excellence standards
-3. Ensure error handling and edge cases
-4. Optimize performance where applicable
-5. Add/improve JSDoc for complex logic
-6. Verify proper TypeScript features usage
-7. Check for anti-patterns
-8. Implement improvements directly
-9. Create tracking issues via /work:creatework for architectural concerns
-10. Report: changes made, subagents used, architectural concerns"
-
-Agent 2 - typescript-expert:
-Task: "Review and refine TypeScript/JavaScript code for [Module B / Files 5-8].
-
-Context: Issue {{issueId}} - Parallel code review (Agent 2 of [N])
-
-Files assigned:
-- [file 5]
-- [file 6]
-- [file 7]
-
-**IMPORTANT**: For complex modules, spawn your own typescript-expert SUBAGENTS:
-- If module has >3 files, launch 1 subagent per file
-- Each subagent focuses on deep review of single file
-- Coordinate subagent findings into cohesive report
-
-Deliverables:
-[Same as Agent 1]"
-
-# Continue for Agent 3, Agent 4, etc. as needed
-```
-
-### Step 3A: Single Agent Deployment (IF 1-3 files)
-
-```
-Task: "Review and refine all TypeScript/JavaScript code for issue {{issueId}}.
-
-Modified files:
-[List all .ts/.tsx/.js/.jsx files]
-
-Deliverables:
-[Same as parallel deployment]"
-```
-
-### Step 4: Aggregate Results
-
-Wait for all agents to complete → Review reports from each agent:
-- Changes made per agent/module
-- Subagents spawned (if any)
-- Architectural concerns identified
-
-Display:
-```
-✅ Parallel TypeScript Code Review Complete
-
-📊 Review Metrics:
-- Agents deployed: [N] in parallel
-- Subagents spawned: [N] (by orchestrator agents)
-- Files reviewed: [N]
-- Modules: [list]
-- Changes implemented: [summary]
-
-🔍 Findings:
-- Type safety improvements: [count]
-- Best practice enforcement: [count]
-- Performance optimizations: [count]
-- Architectural concerns: [count]
-```
-
-### Step 5: Handle Architectural Concerns
-
-[IF architectural concerns identified] → For each concern:
-- Use Sequential-thinking to confirm it's truly out-of-scope
-- Use `/work:creatework` to create tracking issue
-- Report tracking issue IDs
-
-**Output:**
-- ✅ All TS/JS code reviewed and refined (parallel execution)
-- ✅ Type safety and best practices enforced across all modules
-- ✅ Cascading subagents used for complex modules
-- ✅ Tracking issues created for architectural concerns
+**NEXT**: Phase 4
 
 ---
 
-## Phase 2.5: Update Status to "In Review" (Optional)
+### Phase 4: Review
 
-**[OPTIONAL - If team workflow includes "In Review" before validation]**
+**GATE**: Phase 3 complete, TypeScript/JavaScript files modified
 
-After implementation complete:
-```
-Tool: mcp__linear__update_issue
-Parameters: id: "{{issueId}}", state: "In Review"
-```
+**SKIP IF**: No .ts/.tsx/.js/.jsx/.vue files in `cache.files_modified`
 
-Report: "👀 Issue {{issueId}} → 'In Review'" → Error handling: Reference framework (status update)
+**DO**:
+
+1. **Count files** from cache:
+   ```
+   ts_files = cache.files_modified.filter(f => /\.(ts|tsx|js|jsx|vue)$/.test(f))
+   ```
+
+2. **Deploy reviewers** based on count:
+
+   | Files | Strategy |
+   |-------|----------|
+   | 1-3 | Single typescript-expert |
+   | 4-6 | 2 typescript-expert agents parallel |
+   | 7-12 | 3 typescript-expert agents parallel |
+   | 13+ | 4+ agents (1 per 3-4 files) |
+
+3. **Parallel deployment** using [AGENT_DEPLOY]:
+   ```
+   # Single message, multiple Task calls
+
+   Agent 1 - typescript-expert:
+   "Review TypeScript code for {{issueId}} (Agent 1/[N])
+
+   Files: [subset 1]
+
+   Deliverables:
+   1. Type safety and best practices
+   2. Error handling and edge cases
+   3. Implement improvements directly
+   4. Report: changes made, issues found"
+
+   Agent 2 - typescript-expert:
+   "Review TypeScript code for {{issueId}} (Agent 2/[N])
+
+   Files: [subset 2]
+   ..."
+   ```
+
+4. **Aggregate results**:
+   - Collect changes from each agent
+   - Note any issues flagged for tracking
+   - Update `execution_state.agents_deployed`
+
+5. **Report**:
+   ```
+   ✅ Code Review Complete
+   - Agents: [N] parallel
+   - Files reviewed: [N]
+   - Improvements made: [summary]
+   ```
+
+**STATE_UPDATE**: `phases_completed.push(4)`, record review findings
+
+**NEXT**: Phase 5
 
 ---
 
-## Phase 3: Validation (MANDATORY)
+### Phase 5: Resolve Errors
 
-### 3.1: Type Checking
+**GATE**: Phase 4 complete (or Phase 3 if no TS files)
 
-1. Determine command: Check package.json for `typecheck` script → Common: `npm run typecheck`, `tsc --noEmit`
+**DO**:
 
-2. Run:
+#### 5.1 Type Checking
+
+1. **Run typecheck**:
    ```bash
    npm run typecheck
    ```
 
-3. Capture output → Count errors → Identify types → Group by file
+2. **Parse and cache errors**:
+   - Count total, group by file, group by error code
+   - Store in `execution_state.cache.error_groups`
+   - Set `execution_state.type_errors.initial`
 
-4. Report:
+3. **Report**:
    ```
-   🔍 Type Check:
-   - Errors: [N]
-   - Files: [N]
-   - Types: [list codes]
+   🔍 Type Check: [N] errors in [N] files
+   Top codes: [TS2xxx: N, TS2yyy: M, ...]
    ```
 
-### 3.2: Tests (if applicable)
+4. **IF errors = 0** → skip to 5.2
 
-1. Check if tests exist → Look for package.json test script
+5. **Wave 1 - Deploy agents** (see Decision Table 3.2):
 
-2. Run:
+   | Errors | Files | Action |
+   |--------|-------|--------|
+   | < 20 | Any | Single agent |
+   | ≥ 20 | Any | 2 parallel agents |
+   | ≥ 50 | Any | 3 parallel agents |
+   | Any | > 5 | 2 agents by file grouping |
+
+   Deploy using [AGENT_DEPLOY] with appropriate agent type.
+
+6. **Re-validate**:
    ```bash
-   npm run test
+   npm run typecheck
+   ```
+   Update `execution_state.type_errors`
+
+7. **Wave 2** (IF errors remain):
+
+   Use Sequential-thinking [TIER 2]:
+   ```
+   thought: "Wave 1: [N] agents, [M] errors remain.
+             Analyze: 1) Why unfixed? 2) Different strategy? 3) Fixable or architectural?"
    ```
 
-3. Report: "✅ Tests passed" OR "❌ [N] tests failed"
+   Deploy Wave 2 with adjusted strategy → Re-validate
 
-### 3.3: Linting (MANDATORY)
+8. **Wave 3 / Circuit Breaker** (IF still errors after Wave 2):
 
-1. Determine command: Check package.json for lint scripts → Common: `npm run lint`, `eslint .`, `prettier --check .`
+   Use Sequential-thinking to assess if truly architectural:
+   - IF architectural → create tracking issues via /work:creatework
+   - IF fixable → one more targeted attempt
 
-2. Run:
+   After Wave 3: Force create tracking issues for remaining errors.
+
+9. **Quality Gate**:
+   ```
+   🚦 Type Errors: [0 | N remaining, tracked in TRG-xxx]
+   Status: [PASS | CONDITIONAL PASS]
+   ```
+
+   IF errors > 0 AND no tracking issues → STOP "Quality gate blocked"
+
+#### 5.2 Linting
+
+1. **Auto-fix first**:
+   ```bash
+   npm run lint -- --fix
+   ```
+
+2. **Re-check**:
    ```bash
    npm run lint
    ```
+   Parse errors, store in `execution_state.lint_errors`
 
-3. Capture → Count errors vs warnings → Identify types → Group by file/severity → Note auto-fixable
+3. **IF errors = 0** → skip to Phase 6
 
-4. Report:
+4. **Deploy linting agents** (if errors ≥ 30):
+   - Group by file or rule type
+   - Deploy parallel linting-expert agents
+
+5. **Re-validate** → Wave 2 if needed
+
+6. **Quality Gate**:
    ```
-   🔍 Linting:
-   - Errors: [N]
-   - Warnings: [N]
-   - Files: [N]
-   - Auto-fixable: [N]
-   - Manual: [N]
-   - Common: [top 3-5 rules]
-   ```
-
-5. **If no linting configured:** Report: "⚠️ No linting configuration" → Suggest adding ESLint/Prettier → CONTINUE (non-blocking)
-
-6. **If passed:** Report: "✅ Linting passed" → CONTINUE to Phase 3.5
-
-7. **If failed:** Report errors → CONTINUE to Phase 3.7 (after Phase 3.5)
-
----
-
-## Phase 3.5: Type Error Resolution with Iterative Waves (MANDATORY)
-
-**[MANDATORY IF type errors exist - ZERO-ERROR ENFORCEMENT]**
-
-**[AUTOMATIC PARALLEL DEPLOYMENT + ITERATIVE WAVES UNTIL 0 ERRORS]**
-
-### Step 1: Analyze Error Distribution
-
-**Categorize errors:**
-- Count total errors: [N]
-- Count by error code: [list top 5 codes]
-- Count by file: [list files with errors]
-- Count by module: [frontend/backend/shared/etc]
-- Identify error types: [type-system / module-resolution / mixed]
-
-**Agent selection mapping:**
-
-| Error Pattern | Primary Agent | When to Use |
-|--------------|---------------|-------------|
-| TS2344, TS2536, TS2589, TS2xxx | typescript-type-expert | Type system, generics, recursion, complex types |
-| TS2307, TS2792, TS6xxx | typescript-build-expert | Module resolution, imports, config issues |
-| Mixed or general | typescript-expert | General TypeScript issues |
-
-### Step 2: Wave 1 - Mandatory Parallel Agent Deployment
-
-**PARALLELIZATION THRESHOLDS (AUTOMATIC):**
-
-| Error Count | Files Affected | Modules | Action |
-|-------------|----------------|---------|--------|
-| >20 errors | Any | Any | Deploy 2+ agents in parallel |
-| >50 errors | Any | Any | Deploy 3+ agents in parallel |
-| Any | >5 files | Any | Deploy 2+ agents by file grouping |
-| Any | Any | >2 modules | Deploy 1 agent per module |
-
-**Deployment Strategy:**
-
-**Option A: Error-Type-Based Parallel Deployment** (if distinct error categories):
-
-```
-# Launch multiple TypeScript agents in parallel (single message, multiple Task calls)
-
-Agent 1 - typescript-type-expert:
-Task: "Analyze and fix TYPE SYSTEM errors:
-
-Context: Issue {{issueId}} - Wave 1 parallel type error resolution (Agent 1 of [N])
-
-Error category: Type system errors (TS2xxx)
-Errors assigned:
-[Paste type-system errors with file:line]
-
-**IMPORTANT**: Spawn your own typescript-expert SUBAGENTS:
-- If errors span >3 files, launch 1 subagent per file
-- Each subagent fixes errors in its assigned file
-- Coordinate fixes to ensure consistency
-
-Deliverables:
-1. Categorize your assigned errors
-2. Provide specific fixes for each error
-3. Implement fixes directly (use Edit/Write tools)
-4. Verify fixes don't break other code
-5. Report: errors fixed, subagents used, any complex cases
-6. DO NOT create tracking issues yet - we'll try Wave 2 if needed"
-
-Agent 2 - typescript-build-expert:
-Task: "Analyze and fix MODULE RESOLUTION errors:
-
-Context: Issue {{issueId}} - Wave 1 parallel type error resolution (Agent 2 of [N])
-
-Error category: Module resolution errors (TS2307, TS2792, TS6xxx)
-Errors assigned:
-[Paste module errors with file:line]
-
-**IMPORTANT**: Spawn your own typescript-expert SUBAGENTS:
-- If errors span >3 files, launch 1 subagent per file
-- Each subagent fixes errors in its assigned file
-- Coordinate fixes to ensure consistency
-
-Deliverables:
-[Same as Agent 1]"
-
-# Continue for Agent 3, 4, etc. based on error distribution
-```
-
-**Option B: File-Based Parallel Deployment** (if errors concentrated by file):
-
-```
-# Launch multiple typescript-expert agents in parallel, grouped by files
-
-Agent 1 - typescript-expert:
-Task: "Fix TypeScript errors in [files 1-3]:
-
-Context: Issue {{issueId}} - Wave 1 parallel resolution (Agent 1 of [N])
-
-Files assigned:
-- [file 1]: [N] errors
-- [file 2]: [N] errors
-- [file 3]: [N] errors
-
-Errors:
-[Paste errors for these files]
-
-Deliverables:
-[Same as Option A]"
-
-Agent 2 - typescript-expert:
-Task: "Fix TypeScript errors in [files 4-6]:
-[Same structure as Agent 1]"
-```
-
-**Option C: Module-Based Parallel Deployment** (if errors span multiple modules):
-
-```
-Agent 1 - typescript-expert:
-Task: "Fix TypeScript errors in FRONTEND module:
-
-Context: Issue {{issueId}} - Wave 1 parallel resolution (Agent 1 of [N])
-
-Module: frontend/
-Errors: [N] errors in [N] files
-
-[Paste errors for frontend module]
-
-Deliverables:
-[Same as Option A]"
-
-Agent 2 - typescript-expert:
-Task: "Fix TypeScript errors in BACKEND module:
-[Same structure]"
-```
-
-### Step 3: Quality Gate 1 - Re-Validate After Wave 1
-
-Run typecheck again:
-```bash
-npm run typecheck
-```
-
-Count remaining errors: [N]
-
-**Report Wave 1 results:**
-```
-📊 Wave 1 Type Error Resolution:
-- Initial errors: [N]
-- Agents deployed: [N] in parallel
-- Subagents spawned: [N]
-- Errors fixed: [N]
-- Remaining errors: [N]
-```
-
-### Step 4: Wave 2 - Iterative Deployment (IF errors remain)
-
-**[TRIGGER: IF remaining errors > 0 after Wave 1]**
-
-**Use Sequential-thinking to analyze failure:**
-
-```
-mcp__sequential-thinking__sequentialthinking:
-  thought: "Wave 1 results: [N] agents deployed, [N] errors remain. I need to determine: 1) Why did Wave 1 fail to fix all errors? (too complex? wrong agent type? related issues?), 2) What's a different strategy? (different agent types? more granular file-based approach? architectural refactoring?), 3) Can Wave 2 fix remaining errors or are they truly architectural? 4) How many agents for Wave 2?"
-  thoughtNumber: 1
-  totalThoughts: 6
-  nextThoughtNeeded: true
-```
-
-**Based on Sequential-thinking analysis:**
-
-- **If errors are fixable**: Deploy Wave 2 with adjusted strategy (different agents, more granular, focus on specific files)
-- **If errors require minor refactoring**: Deploy refactoring-expert in Wave 2
-- **If truly architectural**: Proceed to Wave 3 analysis
-
-**Wave 2 Deployment:**
-
-Apply similar parallel deployment as Wave 1, but with strategy adjusted based on Sequential-thinking:
-- More granular file grouping (1 agent per file if needed)
-- Different agent types if Wave 1 used wrong type
-- Focused on specific remaining error patterns
-
-### Step 5: Quality Gate 2 - Re-Validate After Wave 2
-
-Run typecheck again → Count remaining errors: [N]
-
-**Report Wave 2 results:**
-```
-📊 Wave 2 Type Error Resolution:
-- Errors after Wave 1: [N]
-- Wave 2 agents deployed: [N]
-- Errors fixed in Wave 2: [N]
-- Total errors fixed: [N]
-- Remaining errors: [N]
-```
-
-### Step 6: Wave 3 - Final Analysis (IF errors STILL remain)
-
-**[TRIGGER: IF remaining errors > 0 after Wave 2]**
-
-**Use Sequential-thinking for architectural assessment:**
-
-```
-mcp__sequential-thinking__sequentialthinking:
-  thought: "After 2 waves, [N] errors remain. I need to determine: 1) Are these truly architectural issues requiring major refactoring? 2) Are they caused by incorrect requirements? 3) Can we attempt ONE MORE targeted fix? 4) Should we create tracking issues? 5) What's the scope of architectural work needed?"
-  thoughtNumber: 1
-  totalThoughts: 6
-  nextThoughtNeeded: true
-```
-
-**Based on Sequential-thinking:**
-
-**Option A: One More Targeted Attempt**
-- If errors are highly localized (1-2 files)
-- If Sequential-thinking suggests they're fixable
-- Deploy single highly-focused agent for remaining errors
-
-**Option B: Create Tracking Issues**
-- ONLY if Sequential-thinking confirms truly architectural
-- ONLY if errors would require major refactoring out of current scope
-- Use `/work:creatework` for each architectural concern
-- Group related errors into single tracking issue
-
-### Step 7: Final Quality Gate
-
-**MANDATORY CHECKPOINT:**
-
-```
-🚦 Type Error Quality Gate:
-
-Current errors: [N]
-
-Status: [✅ PASS: 0 errors / ❌ BLOCKED: [N] errors remain]
-
-Actions taken:
-- Wave 1: [N] agents, [N] errors fixed
-- Wave 2: [N] agents, [N] errors fixed (if executed)
-- Wave 3: [analysis/tracking issues created] (if executed)
-
-Tracking issues created: [list IDs or "None"]
-```
-
-**IF errors > 0 AND no tracking issues created:**
-- **STOP**: Do NOT proceed to next phase
-- Report: "❌ Quality Gate BLOCKED: [N] type errors remain and no tracking issues created"
-- Require user intervention
-
-**IF errors = 0 OR tracking issues created for remaining errors:**
-- ✅ PASS: Proceed to Phase 3.7
-
-### Final Output
-
-```
-📊 Type Error Resolution Complete:
-- Total waves executed: [1/2/3]
-- Total agents deployed: [N]
-- Total subagents spawned: [N]
-- Initial errors: [N]
-- Final errors: [N]
-- Errors fixed: [N]
-- Tracking issues: [list IDs]
-- Result: [✅ Zero errors achieved / ⚠️ Architectural issues tracked]
-```
-
----
-
-## Phase 3.7: Linting Error Resolution with Parallel Agents (MANDATORY)
-
-**[MANDATORY IF linting errors exist from Phase 3.3 - ZERO-ERROR ENFORCEMENT]**
-
-**[AUTO-FIX FIRST, THEN PARALLEL AGENTS IF NEEDED]**
-
-### Step 1: Auto-Fix Attempt
-
-**Always attempt auto-fix first:**
-```bash
-npm run lint -- --fix
-# OR
-npx eslint . --fix && npx prettier --write .
-```
-
-Re-run linting → Count remaining errors: [N]
-
-**If all fixed:** Report: "✅ All [N] linting errors fixed via auto-fix" → Skip to Phase 3.9
-
-**If errors remain:** Continue to Step 2
-
-### Step 2: Categorize Remaining Errors
-
-**Analyze error distribution:**
-- Total errors: [N]
-- Errors by file: [list files with counts]
-- Errors by rule: [list top 5 rules]
-- Errors by severity: [N] errors, [N] warnings
-- Errors by type: [style / best-practice / security]
-
-### Step 3: Parallel Linting-Expert Deployment
-
-**PARALLELIZATION THRESHOLDS:**
-
-| Error Count | Files Affected | Action |
-|-------------|----------------|--------|
-| >30 errors | Any | Deploy 2+ linting-expert agents in parallel |
-| >60 errors | Any | Deploy 3+ linting-expert agents in parallel |
-| Any | >6 files | Deploy 2+ agents by file grouping |
-
-**Deployment Strategy:**
-
-**[IF <30 errors]** → Single linting-expert agent
-
-**[IF ≥30 errors OR >6 files]** → Parallel agents:
-
-```
-# Launch multiple linting-expert agents in parallel
-
-Agent 1 - linting-expert:
-Task: "Fix linting errors in [files 1-3] / [Module A]:
-
-Context: Issue {{issueId}} - Parallel linting resolution (Agent 1 of [N])
-
-Files assigned:
-- [file 1]: [N] errors
-- [file 2]: [N] errors
-
-Errors:
-[Paste errors for assigned files]
-
-Deliverables:
-1. Categorize by type (style/best-practice/security)
-2. Implement fixes for ALL errors in assigned files
-3. Explain non-obvious fixes
-4. DO NOT modify linting config without consulting main execution
-5. Re-run linting after fixes
-6. Report: errors fixed, any complex cases"
-
-Agent 2 - linting-expert:
-Task: "Fix linting errors in [files 4-6] / [Module B]:
-[Same structure as Agent 1]"
-
-# Continue for Agent 3, 4, etc. as needed
-```
-
-### Step 4: Quality Gate - Re-Validate
-
-Run linting again:
-```bash
-npm run lint
-```
-
-Count remaining errors: [N]
-
-**Report results:**
-```
-📊 Linting Resolution:
-- Initial errors: [N]
-- Auto-fixed: [N]
-- Agents deployed: [N]
-- Agent-fixed: [N]
-- Remaining: [N]
-```
-
-### Step 5: Wave 2 (IF errors remain)
-
-**[TRIGGER: IF remaining errors > 0]**
-
-Use Sequential-thinking to analyze:
-```
-mcp__sequential-thinking__sequentialthinking:
-  thought: "After auto-fix and agent fixes, [N] linting errors remain. I need to determine: 1) Why weren't they fixed? (complex rules? config issues? code style conflicts?), 2) Are they legitimate errors or overly strict rules? 3) Should we deploy more targeted agents? 4) Should we adjust linting config? 5) Are any truly unfixable?"
-  thoughtNumber: 1
-  totalThoughts: 5
-  nextThoughtNeeded: true
-```
-
-**Based on Sequential-thinking:**
-- **If errors are fixable**: Deploy Wave 2 with more granular file-based approach
-- **If config too strict**: Review and adjust specific rules (document justification)
-- **If truly unfixable**: Create tracking issue via `/work:creatework`
-
-### Step 6: Final Quality Gate
-
-**MANDATORY CHECKPOINT:**
-
-```
-🚦 Linting Quality Gate:
-
-Current errors: [N]
-
-Status: [✅ PASS: 0 errors / ⚠️ CONDITIONAL PASS: [N] warnings only / ❌ BLOCKED: [N] errors remain]
-
-Actions taken:
-- Auto-fix: [N] errors fixed
-- Agent fixes: [N] errors fixed
-- Config adjustments: [list if any]
-- Tracking issues: [list IDs or "None"]
-```
-
-**IF ERROR-level issues remain AND no tracking issues:**
-- **STOP**: Do NOT proceed
-- Report: "❌ Quality Gate BLOCKED: [N] linting ERRORS remain"
-
-**IF only WARNINGS remain OR tracking issues created:**
-- ✅ PASS: Proceed to Phase 3.9
-
----
-
-## Phase 3.9: Business Logic Validation (MANDATORY)
-
-**[MANDATORY IF complex functions modified - LOGIC CORRECTNESS CHECK]**
-
-**[ENSURES NO BUSINESS LOGIC BUGS INTRODUCED]**
-
-### Purpose
-
-Validate that all modified/created functions:
-1. Implement correct business logic (not just type-safe)
-2. Handle edge cases properly
-3. Don't introduce bugs or break existing functionality
-4. Follow intended requirements from issue
-
-### Step 1: Identify Functions to Validate
-
-List all new/modified functions from implementation:
-```bash
-git diff --name-only | xargs -I {} git diff {} | grep -E "^(\\+|-)\\s*(function|const.*=.*=>|async.*function)"
-```
-
-Count: [N] functions modified/created
-
-**Complexity assessment:**
-- Simple functions (<10 lines, straightforward logic): [N]
-- Moderate functions (10-30 lines, some complexity): [N]
-- Complex functions (>30 lines, complex logic/algorithms): [N]
-
-### Step 2: Determine Validation Strategy
-
-| Complexity | Function Count | Strategy |
-|------------|----------------|----------|
-| Mostly simple | <5 functions | Manual review (skip agent) |
-| Mixed | 5-10 functions | Single code-review-expert agent |
-| Complex or many | >10 functions OR >3 complex | Deploy 2+ code-review-expert agents in parallel |
-
-### Step 3: Deploy Business Logic Validation Agents
-
-**[IF simple functions only]** → Skip to Phase 4 (manual review sufficient)
-
-**[IF 5-10 functions OR some complex]** → Single agent:
-
-```
-Task: "Validate business logic correctness for issue {{issueId}}.
-
-Context: Implementation complete, need to verify logic correctness
-
-Functions to validate:
-[List function signatures with file:line]
-
-Requirements from issue:
-[Copy relevant requirements]
-
-Deliverables:
-1. Review each function for logic correctness
-2. Verify edge case handling
-3. Check against requirements
-4. Identify any logic bugs or incorrect implementations
-5. Verify no regressions in existing functionality
-6. Report: functions validated, issues found, confidence level"
-```
-
-**[IF >10 functions OR >3 complex OR multiple modules]** → Parallel agents:
-
-```
-# Launch multiple code-review-expert agents in parallel
-
-Agent 1 - code-review-expert:
-Task: "Validate business logic in [Module A / Files 1-3]:
-
-Context: Issue {{issueId}} - Parallel logic validation (Agent 1 of [N])
-
-Functions assigned:
-- [function 1] in [file]:[line]
-- [function 2] in [file]:[line]
-
-Requirements:
-[Relevant requirements]
-
-Deliverables:
-[Same as single agent]"
-
-Agent 2 - code-review-expert:
-Task: "Validate business logic in [Module B / Files 4-6]:
-[Same structure]"
-```
-
-### Step 4: Review Validation Results
-
-Aggregate findings from agents:
-- Functions validated: [N]
-- Logic issues found: [N]
-- Edge case issues: [N]
-- Requirement mismatches: [N]
-
-**Report:**
-```
-📊 Business Logic Validation:
-- Agents deployed: [N]
-- Functions validated: [N]
-- Issues found: [N]
-- Severity: [Critical/Major/Minor]
-```
-
-### Step 5: Remediate Logic Issues
-
-**[IF issues found]:**
-
-For each issue:
-1. **Use Sequential-thinking to assess severity:**
-   ```
-   mcp__sequential-thinking__sequentialthinking:
-     thought: "Logic issue found: [description]. I need to determine: 1) Severity (critical/major/minor)? 2) Can be fixed quickly in current scope? 3) Requires rethinking approach? 4) Fix now or create tracking issue?"
-     thoughtNumber: 1
-     totalThoughts: 4
-     nextThoughtNeeded: true
+   🚦 Linting: [PASS | N warnings only | BLOCKED]
    ```
 
-2. **If fixable immediately**: Implement fix → Re-validate
-3. **If requires redesign**: Create tracking issue via `/work:creatework` → Document in completion summary
+   IF ERROR-level issues remain AND no tracking → STOP
 
-### Step 6: Final Quality Gate
+**STATE_UPDATE**: `phases_completed.push(5)`, update error counts
 
-```
-🚦 Business Logic Quality Gate:
+**CHECKPOINT**: Apply [CHECKPOINT] pattern
 
-Functions validated: [N]
-Issues found: [N]
-Issues fixed: [N]
-Issues tracked: [list IDs]
-
-Status: [✅ PASS: All logic correct / ⚠️ CONDITIONAL: Issues tracked / ❌ BLOCKED: Critical issues unfixed]
-```
-
-**IF critical issues remain AND not tracked:**
-- **STOP**: Do NOT mark issue as Done
-- Report: "❌ Critical business logic issues must be fixed"
-
-**IF all issues fixed OR tracked:**
-- ✅ PASS: Proceed to Phase 4
+**NEXT**: Phase 6
 
 ---
 
-## Phase 4: Documentation and Linear Update
+### Phase 6: Validate
 
-### 4.1: Prepare Completion Summary (PRD Format)
+**GATE**: Phase 5 complete with quality gates passed
 
-**Reference**: See `PRD_TEMPLATE.md` in the work plugin for complete guidelines.
+**DO**:
 
-Create truthful PRD-formatted summary with this structure:
+#### 6.1 Tests
 
-```markdown
-## Execution Summary
+1. **Check for test script**:
+   ```bash
+   npm run test --if-present
+   ```
 
-Issue {{issueId}} has been executed. This document provides a comprehensive PRD-formatted summary of the work completed.
+2. **Report**:
+   ```
+   🧪 Tests: [PASS | N failed | No tests configured]
+   ```
 
-## Overview
+3. IF tests fail → assess if related to changes → create tracking issue if pre-existing
 
-### The Problem
-[Restate the original problem from issue description]
+#### 6.2 Business Logic Validation
 
-### What Was Delivered
-[1-2 sentences summarizing the solution implemented]
+**SKIP IF**: mode = "ultra_fast" OR only simple changes
 
-### Context
-- Original issue: {{issueId}}
-- Executed by: Claude Code /performwork
-- Completion date: [ISO timestamp]
+1. **Identify functions to validate**:
+   ```bash
+   git diff HEAD | grep -E "^\+.*(function|=>|async)"
+   ```
 
-## Out of Scope
+2. **Deploy validation** (if complex functions):
+   ```
+   Task tool with subagent_type: "code-review-expert"
+   Prompt: "Validate business logic for {{issueId}}
 
-Items explicitly NOT addressed in this execution:
-- [Item 1 deferred or determined out of scope]
-- [Item 2 tracked in separate issue: [ISSUE-ID]]
+   Functions: [list with file:line]
+   Requirements: [from cache]
 
-## Solution Implemented
+   Check: Logic correctness, edge cases, requirement alignment"
+   ```
 
-### Approach
-[Brief description of implementation approach taken]
+3. **Handle issues found**:
+   - Critical → fix immediately → re-run Phase 5 validation
+   - Non-critical → create tracking issue
 
-### Changes Made
-**Modified Files**:
-- `[file path 1]` - [what changed]
-- `[file path 2]` - [what changed]
+4. **Quality Gate**:
+   ```
+   🚦 Business Logic: [PASS | Issues tracked]
+   ```
 
-**Added Files**:
-- `[file path]` - [purpose]
+**STATE_UPDATE**: `phases_completed.push(6)`
 
-**Deleted Files**:
-- `[file path]` - [reason]
-
-### Key Implementation Details
-- [Technical decision 1 and rationale]
-- [Technical decision 2 and rationale]
-- [Pattern/architecture followed]
-
-## Technical Requirements Met
-
-### Code Quality
-- typescript-expert review: [✅ Complete / ⚠️ N/A]
-- Changes recommended: [list if any]
-- Improvements implemented: [list]
-
-### Constraints Satisfied
-- [Constraint 1 from original issue]: ✅ Met
-- [Constraint 2]: ✅ Met
-
-### Dependencies
-- [Dependency 1]: ✅ Resolved / ⏸️ Blocked by [ISSUE-ID]
-- [Dependency 2]: ✅ Resolved
-
-## Acceptance Criteria
-
-### Original Requirements
-- [✅/❌] [Requirement 1 from issue]
-- [✅/❌] [Requirement 2 from issue]
-- [✅/❌] [Requirement N]
-
-### Technical Validation
-- [✅/❌] All type checks passing (`npm run typecheck`)
-  - Result: [Pass / N errors remaining, tracked in [ISSUE-ID]]
-- [✅/❌] All linting passing (`npm run lint`)
-  - Result: [Pass / N errors remaining, tracked in [ISSUE-ID]]
-- [✅/❌] All tests passing
-  - Result: [Pass / N failures / Not run]
-- [✅/❌] Code reviewed by typescript-expert (if TS/JS changes)
-  - Result: [Complete / N/A]
-
-### Edge Cases
-- [✅/❌] [Edge case 1 handled]
-- [✅/❌] [Edge case 2 handled]
-
-## Discoveries & Tracked Issues
-
-Issues created during execution via /creatework:
-
-1. **[ISSUE-ID]**: [Title]
-   - Type: [Bug fix / Feature / Discovery / Error-fix]
-   - Reason: [Why separate issue was needed]
-   - Priority: [priority level]
-
-2. **[ISSUE-ID]**: [Title]
-   - Type: [Bug fix / Feature / Discovery / Error-fix]
-   - Reason: [Why separate issue was needed]
-   - Priority: [priority level]
-
-Total discoveries: [N] issues created for out-of-scope concerns
-
-## Open Questions (Resolved)
-
-- **Q1**: [Question from original issue]
-  - Status: Resolved
-  - Decision: [Decision made and rationale]
-
-- **Q2**: [Technical tradeoff considered]
-  - Status: Resolved
-  - Decision: [Option chosen and why]
+**NEXT**: Phase 7
 
 ---
 
-## AI Metadata
+### Phase 7: Verify
 
-```json
-{
-  "issueId": "{{issueId}}",
-  "executedBy": "Claude Code /performwork",
-  "completedAt": "[ISO timestamp]",
-  "requirementsCompleted": [N],
-  "requirementsTotal": [N],
-  "filesModified": [N],
-  "filesAdded": [N],
-  "filesDeleted": [N],
-  "typescriptExpertUsed": [true/false],
-  "typeCheckPassing": [true/false],
-  "lintingPassing": [true/false],
-  "testsPassing": [true/false],
-  "discoveriesTracked": [N],
-  "sequentialThinkingUsed": true,
-  "prdVersion": "1.0"
-}
+**GATE**: Phase 6 complete
+
+**DO**:
+
+#### 7.1 File Change Verification
+
+1. **Compare intended vs actual**:
+   ```bash
+   git status --porcelain
+   git diff --name-only HEAD
+   ```
+
+2. **Verify**:
+   - All intended files modified? ✓/✗
+   - No unintended files? ✓/✗
+   - No unstaged changes? ✓/✗
+
+#### 7.2 Technical Debt Scan
+
+1. **Scan for introduced markers**:
+   ```bash
+   git diff HEAD | grep -E "^\+.*(TODO|FIXME|HACK|XXX)" || echo "None"
+   ```
+
+2. **For each marker**:
+   - Pre-existing? → ignore
+   - Intentional deferral? → create tracking issue
+   - Oversight? → fix now
+
+#### 7.3 Requirement Verification
+
+1. **Check each requirement** from `cache.requirements`:
+   - ✅ Complete
+   - ⚠️ Partial → document limitation
+   - ❌ Not addressed → fix or escalate
+
+2. **Report**:
+   ```
+   📋 Requirements: [N/M] complete
+   ```
+
+#### 7.4 Follow-up Assessment
+
+Use Sequential-thinking [TIER 1]:
 ```
+thought: "Implementation complete. Assess:
+          1) Any deferred work? 2) Discovered issues?
+          3) Technical debt? 4) Missing tests? 5) Documentation needs?"
 ```
 
-### 4.2: Update Linear Issue
+For each follow-up item:
+- HIGH priority → create tracking issue via /work:creatework
+- MEDIUM → create issue
+- LOW → document only if substantial
 
-1. **Add comment:**
+**Report**:
+```
+🔗 Follow-up Issues: [N] created
+- [TRG-xxx]: [title]
+- [TRG-yyy]: [title]
+```
+
+#### 7.5 Verification Checklist
+
+```
+✅ VERIFICATION CHECKLIST
+[ ] All files modified as intended
+[ ] No unstaged changes
+[ ] Type checking passed (or tracked)
+[ ] Linting passed (or tracked)
+[ ] Tests passed (or tracked)
+[ ] All requirements addressed
+[ ] Technical debt documented
+[ ] Follow-up issues created
+```
+
+IF any item fails → remediate before proceeding
+
+**STATE_UPDATE**: `phases_completed.push(7)`
+
+**CHECKPOINT**: Apply [CHECKPOINT] pattern
+
+**NEXT**: Phase 8
+
+---
+
+### Phase 8: Complete
+
+**GATE**: Phase 7 verification passed
+
+**DO**:
+
+#### 8.1 Git Commit
+
+1. **Stage changes**:
+   ```bash
+   git add -A
+   ```
+
+2. **Create commit**:
+   ```bash
+   git commit -m "$(cat <<'EOF'
+   feat({{issueId}}): [summary from title]
+
+   ## Changes
+   - [file1]: [change description]
+   - [file2]: [change description]
+
+   ## Validation
+   - Type checking: ✅
+   - Linting: ✅
+   - Tests: [status]
+
+   Resolves: {{issueId}}
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code) /work:performwork
+
+   Co-Authored-By: Claude <noreply@anthropic.com>
+   EOF
+   )"
+   ```
+
+3. **Handle pre-commit hook**:
+   IF hook modifies files → `git add -A && git commit --amend --no-edit`
+
+4. **Store commit hash**:
+   ```bash
+   git rev-parse --short HEAD
+   ```
+   Set `execution_state.commit_hash`
+
+#### 8.2 Linear Update
+
+1. **Create completion comment** using [LINEAR_CALL]:
    ```
    Tool: mcp__linear__create_comment
    Parameters:
      issueId: "{{issueId}}"
-     body: "[Paste summary from 4.1]"
+     body: "[PRD-formatted summary - reference PRD_TEMPLATE.md]
+
+            ## Execution Summary
+            - Requirements: [N/M] complete
+            - Files modified: [N]
+            - Type errors fixed: [N]
+            - Commit: [hash]
+
+            ## Follow-up Issues
+            - [list any created]
+
+            ## AI Metadata
+            ```json
+            { 'completedAt': '[ISO]', 'mode': '[mode]' }
+            ```"
    ```
 
-2. **Update state [ONLY IF all criteria met]:**
+2. **Verify completion criteria**:
+   - ✅ All requirements complete
+   - ✅ Type checking passed
+   - ✅ Linting passed
+   - ✅ Phase 7 verification passed
+   - ✅ Changes committed
 
-   **Criteria for "Done":**
-   - ✅ All requirements completed
-   - ✅ TS/JS code reviewed by typescript-expert (if TS/JS changes)
-   - ✅ Type check passing OR tracking issues created
-   - ✅ Linting passing OR tracking issues created
-   - ✅ Tests passing (if exist)
-   - ✅ No blocking discoveries
-
-   **[IF ALL met]:**
+3. **Update status** (only if ALL criteria met):
    ```
    Tool: mcp__linear__update_issue
-   Parameters: id: "{{issueId}}", state: "Done"
+   Parameters: { id: "{{issueId}}", state: "Done" }
    ```
-   Report: "✅ Issue {{issueId}} → 'Done'" → Error handling: Reference framework (status update)
 
-   **[IF NOT met]:**
-   Keep current state → Report: "⚠️ Issue {{issueId}} remains in current state. Reasons:" → List unmet criteria → **Do NOT update to Done**
+   IF not all met → keep current state, report what's missing
 
----
+#### 8.3 Final Report
 
-## Phase 5: Final Report
-
-Display:
 ```
 ═══════════════════════════════════════════════════
-✅ Issue {{issueId}} Execution Complete
+✅ {{issueId}} Complete
 ═══════════════════════════════════════════════════
 
-📋 Requirements: [N/M completed]
-🔧 Files Modified: [N]
-👨‍💻 TypeScript Expert: [✅ Complete / ⚠️ N/A]
+📋 Requirements: [N/M]
+🔧 Files: [N] modified
 ✅ Type Check: [status]
 🎨 Linting: [status]
 🧪 Tests: [status]
-🔍 Discoveries: [N issues created]
+📦 Commit: [hash]
+🔗 Follow-ups: [N] issues created
 
-🔗 Issue URL: [url]
-
+🔗 [issue URL]
 ═══════════════════════════════════════════════════
 ```
 
+**STATE_UPDATE**: `phases_completed.push(8)`, execution complete
+
 ---
 
-## Multi-Issue Support
+## §6 Resume Flow
 
-**[IF multiple issue IDs provided, comma-separated]:** Example: `TRG-123,TRG-124,TRG-125`
+When `--resume` flag is provided or checkpoint detected:
 
-1. Parse IDs → Split by comma → Trim whitespace
+1. **Parse checkpoint** from Linear comments:
+   ```
+   Search for most recent "🔄 **Checkpoint:" comment
+   Extract JSON state block
+   ```
 
-2. **Apply Sequential-Thinking:** Executing [N] issues: [list IDs + titles]. Determine: 1) Dependencies between them, 2) Execution order, 3) Which can run parallel, 4) Total complexity.
+2. **Validate checkpoint**:
+   - Checkpoint exists?
+   - Issue still In Progress?
+   - No conflicting changes?
 
-3. Execute in optimal order → Independent first → Dependent after dependencies → Report progress after each
+3. **Restore state**:
+   ```javascript
+   execution_state = merge(default_state, checkpoint.state)
+   ```
 
-4. **Final multi-issue report:**
+4. **Skip to next phase**:
+   ```
+   GOTO Phase (checkpoint.phase + 1)
+   ```
+
+5. **Report**:
+   ```
+   📍 Resuming from Phase [N] checkpoint
+   Previously completed: [list phases]
+   ```
+
+---
+
+## §7 Multi-Issue Support
+
+IF multiple issue IDs provided (comma-separated):
+
+1. **Parse IDs**: Split by comma, trim whitespace
+
+2. **Analyze dependencies**:
+   Use Sequential-thinking to determine:
+   - Independent issues (can parallel)
+   - Dependent issues (must sequence)
+
+3. **Execute**:
+   - Independent: Consider parallel execution
+   - Dependent: Execute in dependency order
+
+4. **Report**:
    ```
    📊 Multi-Issue Summary:
    - Total: [N]
    - Completed: [N]
    - Failed: [N]
-   - Discoveries: [N] issues created
    ```
 
 ---
 
-## Configuration
+## §8 Error Handling
 
-**Default behavior:**
-- **MANDATORY typescript-expert review:** ALL TS/JS changes (NO EXCEPTIONS)
-- **MANDATORY type checking:** Cannot skip
-- **MANDATORY linting:** Cannot skip if configured
-- **Test running:** Recommended but optional if tests don't exist
-- **Auto-fix:** Enabled for trivial errors
-- **Discovery tracking:** Automatic via /creatework
-- **Parallel agents:** Encouraged for independent concerns
-
----
-
-## Critical Reminders
-
-- **MANDATORY typescript-expert review:** ALL TypeScript/JavaScript code MUST be reviewed (NO EXCEPTIONS)
-- **MANDATORY validation:** Type errors and linting errors must be addressed before marking Done
-- **Parallel execution:** Run independent agents simultaneously for 40-60% faster execution
-- **Truthful documentation:** Never claim something works if it doesn't
-- **Use /creatework:** For ALL issue creation to ensure deduplication
-- **Sequential-thinking:** Used at 8+ decision points for quality decisions
-- **Specialized agents:** Use appropriate experts (TypeScript, linting, research)
+| Scenario | Action | Fatal |
+|----------|--------|-------|
+| Linear MCP timeout | Report + STOP | Yes |
+| Issue not found | Report | Yes |
+| Status update fails | Log warning, continue | No |
+| Typecheck won't run | Report, suggest npm install | Yes |
+| Lint won't run | Report, continue if optional | Conditional |
+| Wave 3 still has errors | Create tracking issues | No |
+| Agent fails | Retry once, then escalate | Conditional |
+| Business logic issue | Fix or track | Conditional |
+| Commit fails | Report, manual commit needed | No |
 
 ---
 
-## ⚠️ FINAL REMINDER ⚠️
+## §9 Final Reminder
 
-**This was an EXECUTABLE command, not documentation.**
+**Execution Confirmation**:
 
-Did you:
-- ✅ Actually call the Linear MCP tools to fetch/update the issue?
-- ✅ Actually run `npm run typecheck` and parse the results?
-- ✅ Actually run the linting commands?
-- ✅ Actually call Sequential-thinking at decision points?
-- ✅ Actually launch TypeScript agents when needed?
-- ✅ Actually invoke /creatework for discovered issues?
-- ✅ Actually mark the issue as Done when complete?
+- [ ] Called Linear MCP to fetch issue?
+- [ ] Detected execution mode (ultra_fast/fast/full)?
+- [ ] Used Serena for code discovery and editing?
+- [ ] Ran `npm run typecheck` and parsed results?
+- [ ] Ran `npm run lint` and parsed results?
+- [ ] Deployed TypeScript agents for review?
+- [ ] Applied [CHECKPOINT] at major phases?
+- [ ] Created commit with detailed message?
+- [ ] Updated Linear issue to Done?
+- [ ] Created follow-up issues for deferred work?
 
-**If you just read this and said "Yes I'll do that" - YOU FAILED. GO BACK AND ACTUALLY EXECUTE.**
+**IF you read this without executing → GO BACK AND EXECUTE**
+
+The user should NEVER need to ask about follow-up work or commit changes - Phases 7 and 8 handle this automatically.
