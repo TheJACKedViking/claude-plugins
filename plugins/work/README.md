@@ -23,6 +23,7 @@
 Create Linear issues with intelligent deduplication, pattern learning, and quality optimization.
 
 **Features**:
+
 - Advanced deduplication to prevent duplicate issues
 - Pattern learning from historical issues
 - Smart requirement extraction
@@ -30,11 +31,13 @@ Create Linear issues with intelligent deduplication, pattern learning, and quali
 - Quality optimization with learned templates
 
 **Usage**:
+
 ```bash
 /work:creatework [issue details]
 ```
 
 **Use Cases**:
+
 - Creating new feature requests
 - Logging bugs with context
 - Planning technical tasks
@@ -47,6 +50,7 @@ Create Linear issues with intelligent deduplication, pattern learning, and quali
 Comprehensive system health monitoring and diagnostics for all AI command systems.
 
 **Features**:
+
 - Performance monitoring
 - Cache health checks
 - Learning pattern validation
@@ -55,11 +59,13 @@ Comprehensive system health monitoring and diagnostics for all AI command system
 - File system access verification
 
 **Usage**:
+
 ```bash
 /work:diagnostic [full|quick|specific]
 ```
 
 **Use Cases**:
+
 - Troubleshooting system issues
 - Performance analysis
 - Health check before operations
@@ -72,6 +78,7 @@ Comprehensive system health monitoring and diagnostics for all AI command system
 Initialize Linear workspace with batch operations, error recovery, and comprehensive configuration.
 
 **Features**:
+
 - Intelligent batch label creation
 - Workspace validation
 - Permission checking
@@ -80,11 +87,13 @@ Initialize Linear workspace with batch operations, error recovery, and comprehen
 - Checkpoint support
 
 **Usage**:
+
 ```bash
 /work:linear-setup
 ```
 
 **Use Cases**:
+
 - Initial workspace configuration
 - Label system setup
 - Team onboarding
@@ -97,6 +106,7 @@ Initialize Linear workspace with batch operations, error recovery, and comprehen
 Execute Linear issues with requirement adherence, mandatory type checking, and truthful documentation.
 
 **Features**:
+
 - Perfect requirement adherence
 - Mandatory TypeScript type checking
 - Comprehensive issue discovery
@@ -106,11 +116,13 @@ Execute Linear issues with requirement adherence, mandatory type checking, and t
 - Checkpoint and recovery system
 
 **Configuration Modes**:
+
 - **Quick**: Fast execution for simple tasks
 - **Standard**: Balanced approach for most work
 - **Comprehensive**: Deep analysis for complex issues
 
 **Quality Controls**:
+
 - Zero scope creep tolerance
 - 1:1 todo-to-requirement mapping
 - Mandatory type check before completion
@@ -118,11 +130,13 @@ Execute Linear issues with requirement adherence, mandatory type checking, and t
 - Auto-refactor simple TypeScript errors
 
 **Usage**:
+
 ```bash
 /work:performwork [issue-id]
 ```
 
 **Use Cases**:
+
 - Executing development tasks
 - Implementing features
 - Fixing bugs with validation
@@ -135,6 +149,7 @@ Execute Linear issues with requirement adherence, mandatory type checking, and t
 Run comprehensive validation with smart parallelization, caching, and detailed metrics.
 
 **Features**:
+
 - Intelligent change detection
 - Smart parallelization
 - Validation caching
@@ -144,6 +159,7 @@ Run comprehensive validation with smart parallelization, caching, and detailed m
 - Historical pattern learning
 
 **Validation Layers**:
+
 - TypeScript compilation
 - Vue component validation
 - Test suite execution
@@ -153,11 +169,13 @@ Run comprehensive validation with smart parallelization, caching, and detailed m
 - Configuration validation
 
 **Usage**:
+
 ```bash
 /work:validate
 ```
 
 **Use Cases**:
+
 - Pre-commit validation
 - Quality assurance checks
 - CI/CD integration
@@ -308,17 +326,20 @@ The plugin integrates seamlessly with Linear:
 ### Common Issues
 
 **Type errors blocking completion**:
+
 - Review TypeScript errors
 - Use auto-refactor for simple errors
 - Fix complex errors manually
 - Re-run validation
 
 **Deduplication false positives**:
+
 - Provide more specific descriptions
 - Review suggested similar issues
 - Override if necessary
 
 **Performance issues**:
+
 - Run diagnostics: `/work:diagnostic`
 - Check system health
 - Clear caches if needed
@@ -327,6 +348,7 @@ The plugin integrates seamlessly with Linear:
 ## Version History
 
 ### 1.0.0 (Current)
+
 - Initial release
 - 5 enterprise commands
 - Type safety verification

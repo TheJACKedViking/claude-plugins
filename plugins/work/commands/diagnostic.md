@@ -1,11 +1,12 @@
 ---
-description: Comprehensive system health monitoring and diagnostics for all AI command systems
+description: System health diagnostics for AI command tools and services
 argument-hint: [mode]
 ---
 
 # System Diagnostics - Executable Instructions
 
-**Your task:** Run comprehensive system diagnostics to check the health of tools, dependencies, and configurations.
+**Your task:** Run comprehensive system diagnostics to check the health of tools,
+dependencies, and configurations.
 
 ## Diagnostic Mode
 
@@ -25,7 +26,8 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
    - `mcp`: All MCP servers
 
 2. **Display diagnostic plan:**
-   ```
+
+   ```text
    🔍 Diagnostic Plan:
    - MCP Servers: ✅
    - Linear Connection: ✅
@@ -44,7 +46,8 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
    - Identify server types
 
 2. **Display MCP status:**
-   ```
+
+   ```text
    📡 MCP Servers Status:
    - Total servers: [N]
    - Connected: [list server names]
@@ -59,7 +62,8 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
      - ❌ "Linear MCP: Not connected"
 
 4. **If Linear MCP missing:**
-   ```
+
+   ```text
    ❌ Linear MCP Server Not Found!
 
    This explains why creatework and performwork aren't working.
@@ -69,17 +73,22 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
    2. Ensure Linear MCP server is installed:
       npm install -g @modelcontextprotocol/server-linear
    3. Configure in ~/.config/claude/claude_desktop_config.json:
-      {
-        "mcpServers": {
-          "linear": {
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-linear"],
-            "env": {
-              "LINEAR_API_KEY": "your-api-key"
-            }
-          }
-        }
-      }
+
+   ```json
+   {
+     "mcpServers": {
+       "linear": {
+         "command": "npx",
+         "args": ["-y", "@modelcontextprotocol/server-linear"],
+         "env": {
+           "LINEAR_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
+
+   ```text
    4. Restart Claude Code
    ```
 
@@ -97,6 +106,7 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
    - Report missing scripts
 
 2. **Check node_modules:**
+
    ```bash
    test -d node_modules && echo "EXISTS" || echo "MISSING"
    ```
@@ -106,7 +116,8 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
    - Verify it exists and is valid JSON
 
 4. **Display project status:**
-   ```
+
+   ```text
    📦 Project Setup:
    - package.json: [✅ Found / ❌ Missing]
    - node_modules: [✅ Installed / ❌ Missing - run npm install]
@@ -123,25 +134,32 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
 ## Phase 4: Validation Tools Check (if full mode)
 
 1. **Test TypeScript compiler:**
+
    ```bash
    npx tsc --version
    ```
+
    - Report version or "Not found"
 
 2. **Test ESLint (if used):**
+
    ```bash
    npx eslint --version
    ```
+
    - Report version or "Not found"
 
 3. **Test test runner:**
+
    ```bash
    npx vitest --version || npx jest --version
    ```
+
    - Report version or "Not found"
 
 4. **Display tools status:**
-   ```
+
+   ```text
    🔧 Validation Tools:
    - TypeScript: [version / ❌ Not found]
    - ESLint: [version / ❌ Not found / ⏭️ Optional]
@@ -157,14 +175,16 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
    - Use a simple test thought
 
 2. **Report status:**
-   ```
+
+   ```text
    🧠 Sequential-thinking MCP:
    - Status: [✅ Working / ❌ Not available]
    - Note: Required for creatework and performwork commands
    ```
 
 3. **If not available:**
-   ```
+
+   ```text
    ⚠️ Sequential-thinking MCP not available
 
    This will impact:
@@ -184,7 +204,8 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
    - List command files in marketplace/plugins/work/commands
 
 2. **Display command status:**
-   ```
+
+   ```text
    📋 Work Plugin Commands:
    - creatework: [✅ Found]
    - performwork: [✅ Found]
@@ -200,15 +221,13 @@ Mode requested: `{{mode}}` (full/quick/linear/mcp)
 
 **Create comprehensive health report:**
 
-```
-═══════════════════════════════════════════════════════════
-🏥 SYSTEM HEALTH REPORT
-═══════════════════════════════════════════════════════════
+```text
+--- SYSTEM HEALTH REPORT ---
 
 MCP Servers:
   📡 Total Connected: [N]
-  ✅ Linear MCP: [Connected/❌ Missing]
-  🧠 Sequential-thinking: [Working/⚠️ Unavailable]
+  ✅ Linear MCP: [Connected / ❌ Missing]
+  🧠 Sequential-thinking: [Working / ⚠️ Unavailable]
 
 Project Setup:
   📦 Dependencies: [✅ Installed / ❌ Missing]
@@ -222,11 +241,11 @@ Validation Tools:
 Slash Commands:
   📋 Work Plugin: [✅ [N] commands available]
 
-─────────────────────────────────────────────────────────────
+--- Overall Health ---
 
 Overall Health: [✅ HEALTHY / ⚠️ ISSUES / ❌ CRITICAL]
 
-═══════════════════════════════════════════════════════════
+--- END ---
 ```
 
 ---
@@ -241,7 +260,13 @@ Overall Health: [✅ HEALTHY / ⚠️ ISSUES / ❌ CRITICAL]
 
 1. **Call `mcp__sequential-thinking__sequentialthinking`:**
 
-   - Thought: "Diagnostic found [N] issues: [list issues]. I need to: 1) Categorize by severity (critical/warning/info), 2) Determine dependencies between fixes (what must be done first), 3) Assess impact of each issue on system functionality, 4) Identify quick wins vs complex fixes, 5) Prioritize fixes in optimal order, 6) Estimate effort for each fix."
+   - Thought: "Diagnostic found [N] issues: [list issues]. I need to:
+     1) Categorize by severity (critical/warning/info)
+     2) Determine dependencies between fixes
+     3) Assess impact of each issue on functionality
+     4) Identify quick wins vs complex fixes
+     5) Prioritize fixes in optimal order
+     6) Estimate effort for each fix."
    - thoughtNumber: 1
    - totalThoughts: 6
    - nextThoughtNeeded: true
@@ -257,7 +282,7 @@ Overall Health: [✅ HEALTHY / ⚠️ ISSUES / ❌ CRITICAL]
 
 **If issues found, provide specific fixes:**
 
-```
+```text
 ❌ Issues Found:
 
 Critical:
@@ -286,12 +311,14 @@ Warnings:
 
 ## Error Handling
 
-### If diagnostic fails:
+### If diagnostic fails
+
 - Report which checks failed
 - Provide partial results for successful checks
 - Suggest: "Some diagnostics may require project context"
 
-### If permission errors:
+### If permission errors
+
 - Report: "⚠️ Permission denied for some checks"
 - Suggest running with appropriate permissions
 
@@ -300,12 +327,14 @@ Warnings:
 ## Quick Mode Checks
 
 **If mode is `quick`, only run:**
+
 1. Linear MCP connection check
 2. TypeScript availability check
 3. node_modules existence check
 
 **Report:**
-```
+
+```text
 🔍 Quick Diagnostic:
 - Linear MCP: [status]
 - TypeScript: [status]
@@ -325,4 +354,5 @@ Run with `full` for comprehensive diagnostics.
 
 ---
 
-**Remember:** This is an executable prompt. Actually check the systems mentioned. Actually test the connections. Actually report accurate status.
+**Remember:** This is an executable prompt. Check the systems and test the connections.
+Report accurate status.

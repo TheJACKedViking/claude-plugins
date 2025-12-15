@@ -33,10 +33,12 @@ Follow these steps to perform thorough validation:
 
    **Watch mode (`--watch`):**
    - Continuous validation on file changes
-   - Report: "⚠️ Watch mode not fully supported in slash commands. Consider running `npm run typecheck -- --watch` directly."
+   - Report: "⚠️ Watch mode not fully supported in slash commands.
+  Consider running `npm run typecheck -- --watch` directly."
 
 3. **Display validation plan:**
-   ```
+
+   ```text
    📋 Validation Plan:
    - Type checking: ✅
    - Linting: [✅/⏭️]
@@ -53,6 +55,7 @@ Follow these steps to perform thorough validation:
    - Common alternatives: `tsc --noEmit`, `vue-tsc --noEmit`
 
 2. **Run type checking:**
+
    ```bash
    npm run typecheck
    ```
@@ -63,7 +66,8 @@ Follow these steps to perform thorough validation:
    - Identify error types
 
 4. **Display results:**
-   ```
+
+   ```text
    🔍 Type Check Results:
    - Status: [✅ Pass / ❌ Fail]
    - Total errors: [N]
@@ -75,7 +79,7 @@ Follow these steps to perform thorough validation:
 
    For files with the most errors, use Serena MCP to understand code structure:
 
-   ```
+   ```text
    Tool: mcp__serena__get_symbols_overview
    Parameters:
      relative_path: "path/to/file/with/errors.ts"
@@ -102,6 +106,7 @@ Follow these steps to perform thorough validation:
    - Common alternatives: `eslint .`, `npm run lint`
 
 2. **Run linter:**
+
    ```bash
    npm run lint
    ```
@@ -112,7 +117,8 @@ Follow these steps to perform thorough validation:
    - Identify fixable issues
 
 4. **Display results:**
-   ```
+
+   ```text
    🧹 Lint Results:
    - Status: [✅ Pass / ⚠️ Warnings / ❌ Errors]
    - Errors: [N]
@@ -121,9 +127,11 @@ Follow these steps to perform thorough validation:
    ```
 
 5. **If --fix flag provided:**
+
    ```bash
    npm run lint -- --fix
    ```
+
    - Report fixed issues
 
 ---
@@ -135,10 +143,11 @@ Follow these steps to perform thorough validation:
    - Common alternatives: `vitest run`, `jest`, `npm test`
 
 2. **Check if tests exist:**
-   - Look for test files (*.test.ts, *.spec.ts, etc.)
+   - Look for test files (*.test.ts,*.spec.ts, etc.)
    - If no tests found: Report "⚠️ No tests found. Consider adding tests."
 
 3. **Run tests:**
+
    ```bash
    npm run test
    ```
@@ -149,7 +158,8 @@ Follow these steps to perform thorough validation:
    - Calculate coverage if available
 
 5. **Display results:**
-   ```
+
+   ```text
    🧪 Test Results:
    - Status: [✅ Pass / ❌ Fail]
    - Passed: [N]
@@ -166,6 +176,7 @@ Follow these steps to perform thorough validation:
    - Skip if no build script exists
 
 2. **Run build:**
+
    ```bash
    npm run build
    ```
@@ -175,7 +186,8 @@ Follow these steps to perform thorough validation:
    - Check for build warnings/errors
 
 4. **Display results:**
-   ```
+
+   ```text
    🏗️ Build Results:
    - Status: [✅ Success / ❌ Failed]
    - Warnings: [N]
@@ -188,7 +200,7 @@ Follow these steps to perform thorough validation:
 
 **Create comprehensive summary:**
 
-```
+```text
 ═══════════════════════════════════════════════════════════
 📊 VALIDATION REPORT
 ═══════════════════════════════════════════════════════════
@@ -207,7 +219,7 @@ Overall Status: [✅ ALL PASS / ⚠️ WARNINGS / ❌ FAILURES]
 
 **If any failures:**
 
-```
+```text
 ❌ Action Required:
 
 Type Errors ([N]):
@@ -235,7 +247,13 @@ If total errors + failures > 10:
 
 1. **Analyze issue patterns:**
 
-   - Thought: "Validation found [N] type errors, [N] lint issues, [N] test failures. I need to: 1) Identify patterns in the errors, 2) Determine if errors are related or independent, 3) Assess priority (blocking vs non-blocking), 4) Suggest most efficient fix order, 5) Determine if any errors indicate larger architectural issues."
+   - Thought: "Validation found [N] type errors, [N] lint issues, [N] test failures.
+    I need to:
+    1) Identify patterns in the errors
+    2) Determine if errors are related or independent
+    3) Assess priority (blocking vs non-blocking)
+    4) Suggest most efficient fix order
+    5) Determine if any errors indicate larger architectural issues."
    - thoughtNumber: 1
    - totalThoughts: 5
    - nextThoughtNeeded: true
@@ -246,7 +264,8 @@ If total errors + failures > 10:
    - Estimated effort
 
 3. **Display recommendations:**
-   ```
+
+   ```text
    🧠 Smart Recommendations:
 
    Priority 1: [issue type] ([N] occurrences)
@@ -266,14 +285,17 @@ If total errors + failures > 10:
 
 ## Error Handling
 
-### If validation commands fail:
+### If validation commands fail
+
 - Report which commands failed and why
 - Show available package.json scripts
 - Suggest: "Run `npm install` if packages are missing"
 
-### If no validation scripts found:
+### If no validation scripts found
+
 - Report: "⚠️ No validation scripts found in package.json"
 - Suggest adding basic scripts:
+
   ```json
   {
     "scripts": {
@@ -289,6 +311,7 @@ If total errors + failures > 10:
 ## Configuration
 
 **Validation levels:**
+
 - `--quick`: Type check only (~30 seconds)
 - `--full`: All checks (~2-5 minutes)
 - `--fix`: Auto-fix simple issues
@@ -307,4 +330,6 @@ If total errors + failures > 10:
 
 ---
 
-**Remember:** This is an executable prompt. Actually run the validation commands. Actually parse the output. Actually report accurate results.
+**Remember:** This is an executable prompt. Run the validation commands.
+
+Parse the output and report accurate results.

@@ -11,7 +11,7 @@ argument-hint: [description]
 
 ## ⚠️⚠️⚠️ CRITICAL INSTRUCTION ⚠️⚠️⚠️
 
-**THIS IS AN EXECUTABLE COMMAND - NOT DOCUMENTATION**
+**NOTE:** THIS IS AN EXECUTABLE COMMAND - NOT DOCUMENTATION
 
 - ✋ **DO NOT** just read and acknowledge these steps
 - ✅ **DO** immediately begin executing them
@@ -27,7 +27,7 @@ argument-hint: [description]
 
 The user wants to create a Linear issue with this description:
 
-```
+```text
 {{description}}
 ```
 
@@ -37,30 +37,67 @@ The user wants to create a Linear issue with this description:
 
 ### Phase 1: Requirement Extraction with Sequential Thinking
 
-1. **Use Sequential-thinking to extract comprehensive requirements:**
+1. **Use Sequential-thinking to extract comprehensive requirements for ALL PRD sections:**
 
    Call the `mcp__sequential-thinking__sequentialthinking` tool with this analysis:
 
-   - Thought: "Analyzing request: '{{description}}'. I need to: 1) Extract all explicit requirements, 2) Identify implicit requirements based on context, 3) Determine technical complexity, 4) Identify potential edge cases, 5) Suggest validation criteria, 6) Consider what could go wrong, 7) Identify dependencies on existing systems."
+   - Thought: "Analyzing request: '{{description}}'. I MUST extract content for ALL 6 PRD sections:
+     1) **OVERVIEW - The Problem**: What is broken/missing/needed? (REQUIRED - abort if empty)
+     2) **OVERVIEW - Why It Matters**: User/Business/Technical impact? (REQUIRED - abort if empty)
+     3) **OVERVIEW - Context**: Background, related systems, prior art? (Default: 'No additional context identified.')
+     4) **OUT OF SCOPE**: What should NOT be included? What's for later? (Default: 'TBD during implementation')
+     5) **SOLUTION - Approach**: How will this be solved? (REQUIRED - abort if empty)
+     6) **SOLUTION - User Stories**: Who benefits and how? (CONDITIONAL: include for features/UI, omit for bugs)
+     7) **TECHNICAL REQUIREMENTS - Constraints**: Required/forbidden technologies, compatibility? (Default: 'Follow existing patterns')
+     8) **TECHNICAL REQUIREMENTS - Dependencies**: What does this depend on? What depends on this? (Default: 'None identified')
+     9) **TECHNICAL REQUIREMENTS - Code References**: Files/components likely involved? (Default: 'TBD during implementation')
+     10) **TECHNICAL REQUIREMENTS - Performance/Security**: Any special requirements? (Default: 'Standard expectations apply')
+     11) **ACCEPTANCE CRITERIA**: How do we know it's done? (REQUIRED - abort if empty)
+     12) **OPEN QUESTIONS**: What unknowns exist? What decisions are TBD? (Default: 'No open questions identified.')"
    - thoughtNumber: 1
    - totalThoughts: 10
    - nextThoughtNeeded: true
 
-2. **Parse the Sequential-thinking output** to extract:
-   - Explicit functional requirements
-   - Implicit technical requirements
+2. **Parse the Sequential-thinking output** to extract content for EACH PRD section:
+
+   **REQUIRED sections (cannot proceed without content):**
+   - Overview > The Problem
+   - Overview > Why It Matters
+   - Solution > Approach
+   - Acceptance Criteria (at least 1 criterion)
+
+   **DEFAULTABLE sections (use defaults if not determined):**
+   - Overview > Context → Default: "No additional context identified."
+   - Out of Scope → Default: "TBD - to be refined during implementation"
+   - Technical Requirements > Constraints → Default: "Follow existing codebase patterns and conventions"
+   - Technical Requirements > Dependencies → Default: "None identified"
+   - Technical Requirements > Code References → Default: "TBD during implementation"
+   - Technical Requirements > Performance/Security → Default: "Standard expectations apply"
+   - Open Questions → Default: "No open questions identified at this time."
+
+   **CONDITIONAL sections:**
+   - User Stories → Include for features/UI work; omit for bug fixes
+
+   Also extract:
    - Edge cases to handle
-   - Validation criteria
-   - Dependencies
    - Complexity assessment (simple/moderate/complex)
 
-3. **Display the extracted requirements** to the user:
-   ```
+3. **Display the extracted requirements with section coverage** to the user:
+
+   ```text
    🧠 Requirement Analysis Results:
    - Explicit requirements: [count]
    - Implicit requirements: [count]
    - Edge cases: [count]
    - Complexity: [simple/moderate/complex]
+
+   📋 PRD Section Coverage:
+   - Overview (Problem/Why/Context): ✅ Extracted
+   - Out of Scope: [✅ Extracted | ⚠️ Using default]
+   - Solution (Approach/Stories): ✅ Extracted
+   - Technical Requirements: [✅ [N] constraints | ⚠️ Using defaults]
+   - Acceptance Criteria: ✅ [N] criteria
+   - Open Questions: [✅ [N] questions | ⚠️ None identified]
    ```
 
 ### Phase 1.5: Domain Research & Codebase Analysis (Conditional)
@@ -70,6 +107,7 @@ The user wants to create a Linear issue with this description:
 #### When to Use Research-Expert
 
 Use the research-expert agent if the description mentions:
+
 - Unfamiliar technologies, libraries, or frameworks
 - External APIs or services
 - Domain-specific patterns or best practices
@@ -83,7 +121,8 @@ Use the research-expert agent if the description mentions:
    - What level of research depth? (Quick verification vs deep dive)
 
 2. **Launch research-expert agent using Task tool:**
-   ```
+
+   ```text
    Agent: research-expert
    Task: "Research [specific technology/API/pattern] for implementing: [requirement description]
 
@@ -108,6 +147,7 @@ Use the research-expert agent if the description mentions:
 #### When to Use Serena MCP
 
 Use Serena MCP if the description mentions:
+
 - Modifying existing code or features
 - Building on existing patterns
 - Working with specific files or components
@@ -116,7 +156,8 @@ Use Serena MCP if the description mentions:
 #### Serena MCP Codebase Analysis
 
 1. **Use Serena MCP to understand existing code:**
-   ```
+
+   ```text
    Tool: mcp__serena__find_symbol
    Parameters:
      name_path: "ComponentName"  # from description
@@ -125,14 +166,16 @@ Use Serena MCP if the description mentions:
    ```
 
 2. **Get code structure overview:**
-   ```
+
+   ```text
    Tool: mcp__serena__get_symbols_overview
    Parameters:
      relative_path: "path/to/relevant/file.ts"
    ```
 
 3. **Search for existing patterns:**
-   ```
+
+   ```text
    Tool: mcp__serena__search_for_pattern
    Parameters:
      substring_pattern: "similar pattern"
@@ -148,6 +191,7 @@ Use Serena MCP if the description mentions:
 #### Output from Phase 1.5
 
 After research/analysis (if performed), you should have:
+
 - Enhanced requirements with research insights
 - Understanding of existing codebase patterns
 - More accurate complexity assessment
@@ -202,6 +246,142 @@ After research/analysis (if performed), you should have:
    - Priority level (0-4)
    - Structure approach
    - Labels to include
+
+### Phase 3.5: PRD Section Validation (MANDATORY)
+
+**Before proceeding to issue creation, validate ALL required PRD sections have content.**
+
+This validation is NON-NEGOTIABLE. Issue creation MUST NOT proceed without passing this gate.
+
+#### Section Requirements Table
+
+| Section | Requirement | Default if Empty | Abort if Missing? |
+|---------|-------------|------------------|-------------------|
+| Overview > The Problem | REQUIRED | Cannot be empty | ⛔ YES - ABORT |
+| Overview > Why It Matters | REQUIRED | Cannot be empty | ⛔ YES - ABORT |
+| Overview > Context | REQUIRED | "No additional context identified." | No |
+| **Out of Scope** | REQUIRED | See defaults below | No |
+| Solution > Approach | REQUIRED | Cannot be empty | ⛔ YES - ABORT |
+| Solution > User Stories | CONDITIONAL | Include for features; omit for bugs | No |
+| Solution > Key Implementation Notes | OPTIONAL | Omit if none | No |
+| **Technical Requirements** | REQUIRED | See defaults below | No |
+| Acceptance Criteria | REQUIRED | Cannot be empty (min 1 criterion) | ⛔ YES - ABORT |
+| **Open Questions** | REQUIRED | "No open questions identified at this time." | No |
+| AI Metadata | REQUIRED | Auto-generated | No |
+
+#### Default Content for Empty Sections
+
+**Out of Scope** (if nothing specific identified):
+
+```markdown
+## Out of Scope
+
+The following are explicitly NOT part of this issue:
+- TBD - to be refined during implementation
+- Future enhancements beyond core requirements
+```
+
+**Technical Requirements** (if no specific constraints identified):
+
+```markdown
+## Technical Requirements
+
+### Constraints
+- **Must follow**: Existing codebase patterns and conventions
+- **Must preserve**: Backward compatibility with existing functionality
+
+### Dependencies
+- **Related**: None identified
+
+### Code References
+- Files to modify: TBD during implementation
+- Components affected: TBD during implementation
+
+### Performance/Security
+- Standard performance expectations apply
+- Follow existing security patterns
+```
+
+**Open Questions** (if none identified):
+
+```markdown
+## Open Questions
+
+No open questions identified at this time.
+
+If questions arise during implementation, they should be:
+1. Added to this issue as comments
+2. Discussed with stakeholders before proceeding
+```
+
+#### Validation Steps
+
+1. **Review extracted content from Phase 1:**
+   - For each PRD section, check if content was extracted
+   - Apply defaults for any DEFAULTABLE section that is empty
+
+2. **Build section content map:**
+
+   ```text
+   PRD_SECTIONS = {
+     "overview_problem": [extracted or ABORT],
+     "overview_why": [extracted or ABORT],
+     "overview_context": [extracted or default],
+     "out_of_scope": [extracted or default],
+     "solution_approach": [extracted or ABORT],
+     "solution_stories": [extracted or omit],
+     "solution_notes": [extracted or omit],
+     "tech_constraints": [extracted or default],
+     "tech_dependencies": [extracted or default],
+     "tech_code_refs": [extracted or default],
+     "tech_perf_security": [extracted or default],
+     "acceptance_criteria": [extracted or ABORT],
+     "open_questions": [extracted or default]
+   }
+   ```
+
+3. **Validate completeness:**
+   - If ANY section marked "ABORT" is empty → **STOP and inform user**
+   - All other sections must have either extracted content OR applied defaults
+
+4. **Display validation result:**
+
+   ```text
+   📋 PRD Section Validation:
+   ┌─────────────────────────┬──────────┬────────────────┐
+   │ Section                 │ Status   │ Source         │
+   ├─────────────────────────┼──────────┼────────────────┤
+   │ Overview > Problem      │ ✅ PASS  │ Extracted      │
+   │ Overview > Why          │ ✅ PASS  │ Extracted      │
+   │ Overview > Context      │ ✅ PASS  │ [Extracted/Default] │
+   │ Out of Scope            │ ✅ PASS  │ [Extracted/Default] │
+   │ Solution > Approach     │ ✅ PASS  │ Extracted      │
+   │ Technical Requirements  │ ✅ PASS  │ [Extracted/Default] │
+   │ Acceptance Criteria     │ ✅ PASS  │ Extracted      │
+   │ Open Questions          │ ✅ PASS  │ [Extracted/Default] │
+   └─────────────────────────┴──────────┴────────────────┘
+
+   ✅ PRD VALIDATION PASSED - Proceeding to issue creation
+   ```
+
+5. **If validation fails:**
+
+   ```text
+   ❌ PRD VALIDATION FAILED
+
+   Missing required sections:
+   - [Section name]: [Why it's required]
+
+   Cannot create issue without:
+   - Clear problem statement
+   - Impact assessment
+   - Solution approach
+   - At least one acceptance criterion
+
+   Please provide more details about: [missing info]
+   ```
+
+   **STOP - DO NOT PROCEED TO PHASE 4**
 
 ### Phase 4: Create the Linear Issue
 
@@ -322,14 +502,35 @@ The following are explicitly NOT part of this issue:
   "prdVersion": "1.0"
 }
 ```
-```
 
-3. **Call the Linear MCP tool to create the issue:**
+1. **PRE-CREATION VALIDATION CHECKLIST (MANDATORY)**
+
+   **Before calling Linear MCP, verify the description includes ALL required sections:**
+
+   PRE-CREATION CHECKLIST:
+
+- [ ] `## Overview` with `### The Problem` (NOT empty)
+- [ ] `## Overview` with `### Why It Matters` (NOT empty)
+- [ ] `## Overview` with `### Context` (can be default)
+- [ ] `## Out of Scope` with at least one bullet point
+- [ ] `## Solution` with `### Approach` (NOT empty)
+- [ ] `## Technical Requirements` with at least `### Constraints`
+- [ ] `## Acceptance Criteria` with at least one `- [ ]` checkbox
+- [ ] `## Open Questions` (can be "None identified" but MUST exist)
+- [ ] `## AI Metadata` JSON block
+
+**If ANY section is missing, add the default placeholder content from Phase 3.5 BEFORE proceeding.**
+
+- Missing `## Out of Scope` → Add default: "TBD - to be refined during implementation"
+- Missing `## Technical Requirements` → Add default block from Phase 3.5
+- Missing `## Open Questions` → Add: "No open questions identified at this time."
+
+1. **Call the Linear MCP tool to create the issue:**
    - Use whatever Linear MCP tools are available
    - Common tool names might be: `mcp__linear__create_issue`, `mcp__linear__createIssue`, or similar
    - If you encounter errors about tool names, try variations and report the error to the user
 
-4. **Set appropriate metadata:**
+2. **Set appropriate metadata:**
    - Team: "The Reiss Group" (or user's configured team)
    - Priority: [from Sequential-thinking decision]
    - Labels: [from Sequential-thinking decision]
@@ -338,20 +539,54 @@ The following are explicitly NOT part of this issue:
 ### Phase 5: Report Results
 
 1. **Display success message:**
-   ```
-   ✅ Linear Issue Created: [ISSUE-ID]
 
-   📊 Creation Metrics:
-   - Requirements: [N] core + [N] suggested
-   - Validation criteria: [N]
-   - Edge cases: [N]
-   - Complexity: [simple/moderate/complex]
-   - Duplicates checked: [N] similar found, [N]% risk
+```text
+✅ Linear Issue Created: [ISSUE-ID]
 
-   🔗 Issue URL: [URL]
-   ```
+📊 Creation Metrics:
 
-2. **If creation failed:**
+- Requirements: [N] core + [N] suggested
+- Validation criteria: [N]
+- Edge cases: [N]
+- Complexity: [simple/moderate/complex]
+- Duplicates checked: [N] similar found, [N]% risk
+
+🔗 Issue URL: [URL]
+
+```
+
+1. **POST-CREATION PRD COMPLIANCE CHECK (MANDATORY)**
+
+   After receiving the Linear issue ID, report compliance status:
+
+```text
+✅ PRD COMPLIANCE REPORT:
+┌─────────────────────────────┬──────────┬─────────────────┐
+│ Section                     │ Present? │ Source          │
+├─────────────────────────────┼──────────┼─────────────────┤
+│ Overview > The Problem      │ [✅/❌]  │ Extracted       │
+│ Overview > Why It Matters   │ [✅/❌]  │ Extracted       │
+│ Overview > Context          │ [✅/❌]  │ [Ext./Default]  │
+│ Out of Scope                │ [✅/❌]  │ [Ext./Default]  │
+│ Solution > Approach         │ [✅/❌]  │ Extracted       │
+│ Technical Requirements      │ [✅/❌]  │ [Ext./Default]  │
+│ Acceptance Criteria         │ [✅/❌]  │ Extracted       │
+│ Open Questions              │ [✅/❌]  │ [Ext./Default]  │
+│ AI Metadata                 │ [✅/❌]  │ Auto-generated  │
+└─────────────────────────────┴──────────┴─────────────────┘
+
+COMPLIANCE SCORE: [9/9] sections present = 100%
+TARGET: 100% (all 9 sections required)
+
+```
+
+**If compliance score < 100%:**
+
+- This indicates a BUG in the creatework command
+- Log which sections were missing
+- The issue was still created but may need manual editing
+
+1. **If creation failed:**
    - Explain the error clearly
    - Suggest fixes (e.g., "Linear MCP server may be disconnected")
    - Show what data was prepared for creation
@@ -389,6 +624,7 @@ If `--list-templates` is specified, show available templates and exit without cr
 ## Bulk Mode Support
 
 If the user specifies `--bulk` with multiple descriptions, handle each one separately following the same process, but optimize by:
+
 1. Running requirement extraction in parallel
 2. Checking for duplicates within the batch
 3. Detecting dependencies between new issues
@@ -401,6 +637,7 @@ If the user specifies `--bulk` with multiple descriptions, handle each one separ
 **This was an EXECUTABLE command, not documentation.**
 
 Did you:
+
 - ✅ Actually call Sequential-thinking 3 times (requirements, duplicates, structure)?
 - ✅ Actually search Linear for duplicate issues?
 - ✅ Actually call the Linear MCP tool to CREATE the issue?

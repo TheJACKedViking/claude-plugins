@@ -1,13 +1,16 @@
 ---
-description: Execute Linear issues with zero-error enforcement, mandatory validation, and truthful documentation
+description: Execute Linear issues with enforced validation and clear documentation
 argument-hint: [issueId] [--resume]
 ---
 
 # Execute Linear Issue
 
-Execute issue `{{issueId}}` with requirement adherence, type safety, and verified completion.
+Execute issue `{{issueId}}` with requirement adherence and type safety.
 
-> **CRITICAL**: This is an EXECUTABLE command. Call the MCP tools. Make the edits. Run the validations. Do not just read and acknowledge.
+Ensure completion is verified.
+
+> **CRITICAL**: This is an EXECUTABLE command. Call the MCP tools.
+> Make the edits and run the validations. Do not just read and acknowledge.
 
 ---
 
@@ -99,7 +102,8 @@ execution_state = {
 }
 ```
 
-**Update Rule**: After each phase, set `execution_state.phases_completed.push(phase_number)` and `execution_state.checkpoint.phase = phase_number`.
+**Update Rule**: After each phase, set `execution_state.phases_completed.push(phase_number)`.
+And set `execution_state.checkpoint.phase = phase_number`.
 
 ---
 
@@ -108,25 +112,26 @@ execution_state = {
 ### 3.1 Execution Mode Detection
 
 | Condition | Mode | Flow |
-|-----------|------|------|
-| Title matches ultra_fast.keywords AND expected files ≤ 1 | `ultra_fast` | Phases 1→3→5→8 |
-| Title matches fast_path.keywords OR requirements ≤ 3 | `fast` | Skip orchestration, simplified review |
+| ----------- | ------ | ------ |
+| ultra_fast keywords & files ≤ 1 | `ultra_fast` | Phases 1→3→5→8 |
+| fast_path keywords or ≤ 3 requirements | `fast` | Simplified review |
 | Otherwise | `full` | All phases |
 
 ### 3.2 Agent Selection by Error Type
 
 | Error Codes | Agent | Use Case |
-|-------------|-------|----------|
-| TS2344, TS2536, TS2589, TS2xxx (type system) | `typescript-type-expert` | Generics, recursion, complex types |
-| TS2307, TS2792, TS6xxx (module) | `typescript-build-expert` | Imports, resolution, config |
-| Mixed or general | `typescript-expert` | Default for TypeScript issues |
+| ------------- | ------- | ---------- |
+| TS2xxx (types) | `typescript-type-expert` | Generics |
+| Module errors (TS2307/TS2792/TS6xxx) | `typescript-build-expert` | Imports |
+| Mixed or general | `typescript-expert` | Default TypeScript expert |
 | ESLint, Prettier | `linting-expert` | Style and lint rules |
 | Logic, correctness | `code-review-expert` | Business logic validation |
 
 ### 3.3 Error Escalation Path
 
-```
-Wave 1 fails → Wave 2 (different strategy) → Wave 3 (architectural assessment)
+```text
+Wave 1 fails → Wave 2 (different strategy)
+→ Wave 3 (architectural assessment)
                                                         ↓
                                                Create tracking issues
                                                         ↓
@@ -136,7 +141,7 @@ Wave 1 fails → Wave 2 (different strategy) → Wave 3 (architectural assessmen
 ### 3.4 Status Transitions
 
 | Event | Status | Reversible |
-|-------|--------|------------|
+| ------- | -------- | ------------ |
 | Execution starts | In Progress | Yes |
 | Blocking dependency found | On Hold | Yes |
 | Implementation complete | In Review | Yes |
@@ -153,6 +158,7 @@ Named reusable patterns. Reference as `[PATTERN_NAME]`.
 ### [LINEAR_CALL]
 
 All Linear MCP calls use retry on transient errors:
+
 1. Call tool
 2. IF error matches `linear_mcp.retryable` → wait (rolling 15-30s) → retry
 3. IF timeout (2 min total) → STOP with "Linear MCP unavailable"
@@ -161,7 +167,8 @@ All Linear MCP calls use retry on transient errors:
 ### [AGENT_DEPLOY]
 
 Parallel agent deployment template:
-```
+
+```text
 Task tool with subagent_type: [AGENT_TYPE]
 Prompt: "[ACTION] for issue {{issueId}}
 
@@ -178,6 +185,7 @@ For parallel: Send multiple Task calls in single message.
 ### [VALIDATE]
 
 Type check + lint cycle:
+
 1. Run `npm run typecheck` → parse errors → group by file/code
 2. Run `npm run lint` → parse errors → note auto-fixable
 3. Store counts in `execution_state`
@@ -186,9 +194,13 @@ Type check + lint cycle:
 ### [CHECKPOINT]
 
 Save state for resume capability:
+
 1. Create checkpoint comment on Linear issue:
+
    ```markdown
    🔄 **Checkpoint: Phase [N]**
+   ```
+
    ```json
    {
      "phase": [N],
@@ -196,12 +208,13 @@ Save state for resume capability:
      "state": { "phases_completed": [...], "files_modified": [...] }
    }
    ```
-   ```
+
 2. Update `execution_state.checkpoint`
 
 ### [SERENA_EDIT]
 
 Mandatory for symbol-level code changes:
+
 1. `mcp__serena__get_symbols_overview` → understand structure
 2. `mcp__serena__find_symbol(name_path, include_body: true)` → get current code
 3. Edit using:
@@ -221,56 +234,67 @@ Mandatory for symbol-level code changes:
 **DO**:
 
 1. **Check for resume**:
-   ```
+
+   ```text
    IF "--resume" flag OR previous checkpoint exists:
      → Parse last checkpoint from Linear comments
      → Set execution_state from checkpoint
      → SKIP to checkpoint.phase + 1
    ```
 
-2. **Fetch issue** using [LINEAR_CALL]:
-   ```
+1. **Fetch issue** using [LINEAR_CALL]:
+
+   ```text
    Tool: mcp__linear__get_issue
    Parameters: { id: "{{issueId}}" }
    ```
+
    IF not found → STOP "Issue {{issueId}} not found"
 
-3. **Display issue**:
-   ```
+1. **Display issue**:
+
+   ```text
    📋 {{issueId}}: [title]
    Status: [state] | Priority: [priority]
    ```
 
-4. **Parse and cache requirements**:
+1. **Parse and cache requirements**:
    - Extract checkboxes/bullets from description
    - Store in `execution_state.cache.requirements`
    - IF none found → use title as single requirement
 
-5. **Detect execution mode** (see Decision Table 3.1):
-   ```
+1. **Detect execution mode** (see Decision Table 3.1):
+
+   ```text
    IF ultra_fast criteria met → mode = "ultra_fast"
    ELSE IF fast_path criteria met → mode = "fast"
    ELSE → mode = "full"
    ```
+
    Report: `"⚡ Mode: [mode]"`
 
-6. **Cache file list** (run once, reuse everywhere):
+1. **Cache file list** (run once, reuse everywhere):
+
    ```bash
    git diff --name-only HEAD
    ```
+
    Store in `execution_state.cache.files_modified`
 
-7. **Check for Sentry context** (if error-fix issue):
-   ```
+1. **Check for Sentry context** (if error-fix issue):
+
+   ```text
    IF description mentions error pattern OR Sentry ID:
      Tool: mcp__sentry__search_issues
-     Parameters: { organizationSlug: "...", naturalLanguageQuery: "[error pattern]" }
+     Parameters: { organizationSlug: "...",
+                  naturalLanguageQuery: "[error pattern]" }
      → Extract stack traces, affected files
      → Add to context for implementation
    ```
 
-8. **Update status** using [LINEAR_CALL]:
-   ```
+1. **Update status** using [LINEAR_CALL]:
+
+   ```text
    Tool: mcp__linear__update_issue
    Parameters: { id: "{{issueId}}", state: "In Progress" }
    ```
@@ -278,6 +302,7 @@ Mandatory for symbol-level code changes:
 **STATE_UPDATE**: `phases_completed.push(1)`, `checkpoint.phase = 1`
 
 **NEXT**:
+
 - IF mode = "ultra_fast" → Phase 3
 - IF mode = "fast" → Phase 2 (skip orchestration)
 - IF mode = "full" → Phase 2
@@ -293,9 +318,8 @@ Mandatory for symbol-level code changes:
 1. **Orchestration planning** (SKIP if mode ≠ "full"):
 
    Use Sequential-thinking [TIER 1]:
-   ```
-   Tool: mcp__sequential-thinking__sequentialthinking
-   Parameters:
+
+```text
      thought: "Issue {{issueId}}: '[title]'. Requirements: [count].
                Determine: 1) Files to modify, 2) Error volume estimate,
                3) Module boundaries, 4) Parallel agent strategy, 5) Risk assessment"
@@ -306,8 +330,9 @@ Mandatory for symbol-level code changes:
 
    Store orchestration plan for later phases.
 
-2. **Documentation lookup** (if unfamiliar libraries):
-   ```
+1. **Documentation lookup** (if unfamiliar libraries):
+
+```text
    IF description mentions unfamiliar library/API:
      Tool: mcp__context7__resolve-library-id
      Parameters: { libraryName: "[library]" }
@@ -319,8 +344,9 @@ Mandatory for symbol-level code changes:
        → Deploy research-expert agent
    ```
 
-3. **Code discovery** using Serena:
-   ```
+1. **Code discovery** using Serena:
+
+```text
    Tool: mcp__serena__get_symbols_overview
    Parameters: { relative_path: "[relevant file]" }
 
@@ -332,8 +358,9 @@ Mandatory for symbol-level code changes:
      Parameters: { name_path: "[symbol]", relative_path: "[file]" }
    ```
 
-4. **Report analysis**:
-   ```
+1. **Report analysis**:
+
+```text
    🧠 Analysis:
    - Files to modify: [list]
    - Complexity: [simple|moderate|complex]
@@ -355,18 +382,19 @@ Mandatory for symbol-level code changes:
 1. **Choose implementation approach**:
 
    | Complexity | Approach |
-   |------------|----------|
+   | ------------ | ---------- |
    | Simple, files known | Direct implementation |
    | Moderate | Single feature-dev agent |
    | Complex, architectural | feature-dev:code-architect agent |
 
-2. **Direct implementation** (simple cases):
+1. **Direct implementation** (simple cases):
    - Use [SERENA_EDIT] for all symbol-level changes
    - Use `Edit` tool only for config/markdown
    - Explain changes with file:line references
 
-3. **Agent-based implementation** (moderate/complex):
-   ```
+1. **Agent-based implementation** (moderate/complex):
+
+```text
    Task tool with subagent_type: "feature-dev:code-architect"
    Prompt: "Implement requirements for {{issueId}}: [title]
 
@@ -375,12 +403,13 @@ Mandatory for symbol-level code changes:
 
    Deliverables:
    1. Architecture design
-   2. Implementation plan
-   3. File changes with rationale"
+   1. Implementation plan
+   1. File changes with rationale"
    ```
 
-4. **Discovery tracking**:
-   ```
+1. **Discovery tracking**:
+
+   ```text
    IF new issue discovered during implementation:
      → Use /work:creatework with clear description
      → Link to current issue
@@ -392,10 +421,12 @@ Mandatory for symbol-level code changes:
      → STOP "Blocked by [BLOCKER-ID]"
    ```
 
-5. **Update file cache**:
+1. **Update file cache**:
+
    ```bash
    git diff --name-only HEAD
    ```
+
    Update `execution_state.cache.files_modified`
 
 **STATE_UPDATE**: `phases_completed.push(3)`, record files modified
@@ -415,21 +446,23 @@ Mandatory for symbol-level code changes:
 **DO**:
 
 1. **Count files** from cache:
-   ```
+
+   ```javascript
    ts_files = cache.files_modified.filter(f => /\.(ts|tsx|js|jsx|vue)$/.test(f))
    ```
 
-2. **Deploy reviewers** based on count:
+1. **Deploy reviewers** based on count:
 
    | Files | Strategy |
-   |-------|----------|
+   | ------- | ---------- |
    | 1-3 | Single typescript-expert |
    | 4-6 | 2 typescript-expert agents parallel |
    | 7-12 | 3 typescript-expert agents parallel |
    | 13+ | 4+ agents (1 per 3-4 files) |
 
-3. **Parallel deployment** using [AGENT_DEPLOY]:
-   ```
+1. **Parallel deployment** using [AGENT_DEPLOY]:
+
+```text
    # Single message, multiple Task calls
 
    Agent 1 - typescript-expert:
@@ -439,7 +472,7 @@ Mandatory for symbol-level code changes:
 
    Deliverables:
    1. Type safety and best practices
-   2. Error handling and edge cases
+   1. Error handling and edge cases
    3. Implement improvements directly
    4. Report: changes made, issues found"
 
@@ -450,13 +483,14 @@ Mandatory for symbol-level code changes:
    ..."
    ```
 
-4. **Aggregate results**:
+1. **Aggregate results**:
    - Collect changes from each agent
    - Note any issues flagged for tracking
    - Update `execution_state.agents_deployed`
 
-5. **Report**:
-   ```
+1. **Report**:
+
+```text
    ✅ Code Review Complete
    - Agents: [N] parallel
    - Files reviewed: [N]
@@ -478,27 +512,29 @@ Mandatory for symbol-level code changes:
 #### 5.1 Type Checking
 
 1. **Run typecheck**:
+
    ```bash
    npm run typecheck
    ```
 
-2. **Parse and cache errors**:
+1. **Parse and cache errors**:
    - Count total, group by file, group by error code
    - Store in `execution_state.cache.error_groups`
    - Set `execution_state.type_errors.initial`
 
-3. **Report**:
-   ```
+1. **Report**:
+
+```text
    🔍 Type Check: [N] errors in [N] files
    Top codes: [TS2xxx: N, TS2yyy: M, ...]
    ```
 
-4. **IF errors = 0** → skip to 5.2
+1. **IF errors = 0** → skip to 5.2
 
-5. **Wave 1 - Deploy agents** (see Decision Table 3.2):
+1. **Wave 1 - Deploy agents** (see Decision Table 3.2):
 
    | Errors | Files | Action |
-   |--------|-------|--------|
+   | -------- | ------- | -------- |
    | < 20 | Any | Single agent |
    | ≥ 20 | Any | 2 parallel agents |
    | ≥ 50 | Any | 3 parallel agents |
@@ -506,23 +542,26 @@ Mandatory for symbol-level code changes:
 
    Deploy using [AGENT_DEPLOY] with appropriate agent type.
 
-6. **Re-validate**:
+1. **Re-validate**:
+
    ```bash
    npm run typecheck
    ```
+
    Update `execution_state.type_errors`
 
-7. **Wave 2** (IF errors remain):
+1. **Wave 2** (IF errors remain):
 
    Use Sequential-thinking [TIER 2]:
-   ```
+
+```text
    thought: "Wave 1: [N] agents, [M] errors remain.
              Analyze: 1) Why unfixed? 2) Different strategy? 3) Fixable or architectural?"
    ```
 
    Deploy Wave 2 with adjusted strategy → Re-validate
 
-8. **Wave 3 / Circuit Breaker** (IF still errors after Wave 2):
+1. **Wave 3 / Circuit Breaker** (IF still errors after Wave 2):
 
    Use Sequential-thinking to assess if truly architectural:
    - IF architectural → create tracking issues via /work:creatework
@@ -530,8 +569,9 @@ Mandatory for symbol-level code changes:
 
    After Wave 3: Force create tracking issues for remaining errors.
 
-9. **Quality Gate**:
-   ```
+1. **Quality Gate**:
+
+```text
    🚦 Type Errors: [0 | N remaining, tracked in TRG-xxx]
    Status: [PASS | CONDITIONAL PASS]
    ```
@@ -541,26 +581,30 @@ Mandatory for symbol-level code changes:
 #### 5.2 Linting
 
 1. **Auto-fix first**:
+
    ```bash
    npm run lint -- --fix
    ```
 
-2. **Re-check**:
+1. **Re-check**:
+
    ```bash
    npm run lint
    ```
+
    Parse errors, store in `execution_state.lint_errors`
 
-3. **IF errors = 0** → skip to Phase 6
+1. **IF errors = 0** → skip to Phase 6
 
-4. **Deploy linting agents** (if errors ≥ 30):
+1. **Deploy linting agents** (if errors ≥ 30):
    - Group by file or rule type
    - Deploy parallel linting-expert agents
 
-5. **Re-validate** → Wave 2 if needed
+1. **Re-validate** → Wave 2 if needed
 
-6. **Quality Gate**:
-   ```
+1. **Quality Gate**:
+
+   ```text
    🚦 Linting: [PASS | N warnings only | BLOCKED]
    ```
 
@@ -583,12 +627,14 @@ Mandatory for symbol-level code changes:
 #### 6.1 Tests
 
 1. **Check for test script**:
+
    ```bash
    npm run test --if-present
    ```
 
 2. **Report**:
-   ```
+
+   ```text
    🧪 Tests: [PASS | N failed | No tests configured]
    ```
 
@@ -599,12 +645,14 @@ Mandatory for symbol-level code changes:
 **SKIP IF**: mode = "ultra_fast" OR only simple changes
 
 1. **Identify functions to validate**:
+
    ```bash
    git diff HEAD | grep -E "^\+.*(function|=>|async)"
    ```
 
-2. **Deploy validation** (if complex functions):
-   ```
+1. **Deploy validation** (if complex functions):
+
+```text
    Task tool with subagent_type: "code-review-expert"
    Prompt: "Validate business logic for {{issueId}}
 
@@ -614,12 +662,13 @@ Mandatory for symbol-level code changes:
    Check: Logic correctness, edge cases, requirement alignment"
    ```
 
-3. **Handle issues found**:
+1. **Handle issues found**:
    - Critical → fix immediately → re-run Phase 5 validation
    - Non-critical → create tracking issue
 
-4. **Quality Gate**:
-   ```
+1. **Quality Gate**:
+
+```text
    🚦 Business Logic: [PASS | Issues tracked]
    ```
 
@@ -638,12 +687,13 @@ Mandatory for symbol-level code changes:
 #### 7.1 File Change Verification
 
 1. **Compare intended vs actual**:
+
    ```bash
    git status --porcelain
    git diff --name-only HEAD
    ```
 
-2. **Verify**:
+1. **Verify**:
    - All intended files modified? ✓/✗
    - No unintended files? ✓/✗
    - No unstaged changes? ✓/✗
@@ -651,11 +701,12 @@ Mandatory for symbol-level code changes:
 #### 7.2 Technical Debt Scan
 
 1. **Scan for introduced markers**:
+
    ```bash
    git diff HEAD | grep -E "^\+.*(TODO|FIXME|HACK|XXX)" || echo "None"
    ```
 
-2. **For each marker**:
+1. **For each marker**:
    - Pre-existing? → ignore
    - Intentional deferral? → create tracking issue
    - Oversight? → fix now
@@ -668,26 +719,30 @@ Mandatory for symbol-level code changes:
    - ❌ Not addressed → fix or escalate
 
 2. **Report**:
-   ```
+
+```text
    📋 Requirements: [N/M] complete
    ```
 
 #### 7.4 Follow-up Assessment
 
 Use Sequential-thinking [TIER 1]:
-```
+
+```text
 thought: "Implementation complete. Assess:
           1) Any deferred work? 2) Discovered issues?
           3) Technical debt? 4) Missing tests? 5) Documentation needs?"
 ```
 
 For each follow-up item:
+
 - HIGH priority → create tracking issue via /work:creatework
 - MEDIUM → create issue
 - LOW → document only if substantial
 
 **Report**:
-```
+
+```text
 🔗 Follow-up Issues: [N] created
 - [TRG-xxx]: [title]
 - [TRG-yyy]: [title]
@@ -695,7 +750,7 @@ For each follow-up item:
 
 #### 7.5 Verification Checklist
 
-```
+```text
 ✅ VERIFICATION CHECKLIST
 [ ] All files modified as intended
 [ ] No unstaged changes
@@ -726,11 +781,13 @@ IF any item fails → remediate before proceeding
 #### 8.1 Git Commit
 
 1. **Stage changes**:
+
    ```bash
    git add -A
    ```
 
-2. **Create commit**:
+1. **Create commit**:
+
    ```bash
    git commit -m "$(cat <<'EOF'
    feat({{issueId}}): [summary from title]
@@ -753,19 +810,22 @@ IF any item fails → remediate before proceeding
    )"
    ```
 
-3. **Handle pre-commit hook**:
+1. **Handle pre-commit hook**:
    IF hook modifies files → `git add -A && git commit --amend --no-edit`
 
-4. **Store commit hash**:
+1. **Store commit hash**:
+
    ```bash
    git rev-parse --short HEAD
    ```
+
    Set `execution_state.commit_hash`
 
 #### 8.2 Linear Update
 
 1. **Create completion comment** using [LINEAR_CALL]:
-   ```
+
+   ```text
    Tool: mcp__linear__create_comment
    Parameters:
      issueId: "{{issueId}}"
@@ -786,15 +846,16 @@ IF any item fails → remediate before proceeding
             ```"
    ```
 
-2. **Verify completion criteria**:
+1. **Verify completion criteria**:
    - ✅ All requirements complete
    - ✅ Type checking passed
    - ✅ Linting passed
    - ✅ Phase 7 verification passed
    - ✅ Changes committed
 
-3. **Update status** (only if ALL criteria met):
-   ```
+1. **Update status** (only if ALL criteria met):
+
+   ```text
    Tool: mcp__linear__update_issue
    Parameters: { id: "{{issueId}}", state: "Done" }
    ```
@@ -803,7 +864,7 @@ IF any item fails → remediate before proceeding
 
 #### 8.3 Final Report
 
-```
+```text
 ═══════════════════════════════════════════════════
 ✅ {{issueId}} Complete
 ═══════════════════════════════════════════════════
@@ -829,28 +890,32 @@ IF any item fails → remediate before proceeding
 When `--resume` flag is provided or checkpoint detected:
 
 1. **Parse checkpoint** from Linear comments:
-   ```
+
+   ```text
    Search for most recent "🔄 **Checkpoint:" comment
    Extract JSON state block
    ```
 
-2. **Validate checkpoint**:
+1. **Validate checkpoint**:
    - Checkpoint exists?
    - Issue still In Progress?
    - No conflicting changes?
 
-3. **Restore state**:
+1. **Restore state**:
+
    ```javascript
    execution_state = merge(default_state, checkpoint.state)
    ```
 
-4. **Skip to next phase**:
-   ```
+1. **Skip to next phase**:
+
+   ```text
    GOTO Phase (checkpoint.phase + 1)
    ```
 
-5. **Report**:
-   ```
+1. **Report**:
+
+   ```text
    📍 Resuming from Phase [N] checkpoint
    Previously completed: [list phases]
    ```
@@ -863,17 +928,18 @@ IF multiple issue IDs provided (comma-separated):
 
 1. **Parse IDs**: Split by comma, trim whitespace
 
-2. **Analyze dependencies**:
+1. **Analyze dependencies**:
    Use Sequential-thinking to determine:
    - Independent issues (can parallel)
    - Dependent issues (must sequence)
 
-3. **Execute**:
+1. **Execute**:
    - Independent: Consider parallel execution
    - Dependent: Execute in dependency order
 
-4. **Report**:
-   ```
+1. **Report**:
+
+   ```text
    📊 Multi-Issue Summary:
    - Total: [N]
    - Completed: [N]
@@ -885,7 +951,7 @@ IF multiple issue IDs provided (comma-separated):
 ## §8 Error Handling
 
 | Scenario | Action | Fatal |
-|----------|--------|-------|
+| ---------- | -------- | ------- |
 | Linear MCP timeout | Report + STOP | Yes |
 | Issue not found | Report | Yes |
 | Status update fails | Log warning, continue | No |
@@ -913,6 +979,7 @@ IF multiple issue IDs provided (comma-separated):
 - [ ] Updated Linear issue to Done?
 - [ ] Created follow-up issues for deferred work?
 
-**IF you read this without executing → GO BACK AND EXECUTE**
+### IF you read this without executing → GO BACK AND EXECUTE
 
-The user should NEVER need to ask about follow-up work or commit changes - Phases 7 and 8 handle this automatically.
+The user should NEVER need to ask about follow-up work or commit changes.
+Phases 7 and 8 handle this automatically.

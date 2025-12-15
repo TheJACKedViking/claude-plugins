@@ -5,7 +5,8 @@ argument-hint: [workflow-name] [context]
 
 # Workflow - Executable Instructions
 
-**Your task:** Execute predefined workflows that chain multiple commands together for end-to-end task completion.
+**Your task:** Execute predefined workflows that chain multiple commands together
+for end-to-end task completion.
 
 ## Workflow Requested
 
@@ -23,7 +24,8 @@ Context: `{{context}}`
    - Context: remaining arguments
 
 2. **If no workflow specified:**
-   ```
+
+   ```text
    📋 Available Workflows:
 
    full-lifecycle
@@ -49,18 +51,21 @@ Context: `{{context}}`
    ───────────────────────────────────────────────────────
    Usage: /work:workflow <workflow-name> [context]
    ```
+
    - STOP execution
 
 3. **Validate workflow exists:**
    - Check if workflow name matches one of the available workflows
    - If not found:
-     ```
+
+     ```text
      ❌ Unknown workflow: {{workflow-name}}
 
      Available workflows: full-lifecycle, batch-process, health-check-fix, create-and-validate
 
      Use /work:workflow with no arguments to see details.
      ```
+
      - STOP execution
 
 ---
@@ -87,7 +92,8 @@ Context: `{{context}}`
    - Report validation results
 
 4. **Final report:**
-   ```
+
+   ```text
    ═══════════════════════════════════════════════════════════
    ✅ FULL-LIFECYCLE WORKFLOW COMPLETE
    ═══════════════════════════════════════════════════════════
@@ -116,7 +122,13 @@ Context: `{{context}}`
 
 2. **Use Sequential-thinking to analyze dependencies and execution order:**
 
-   - Thought: "Executing [N] issues in batch: [list IDs]. I need to: 1) Fetch titles/descriptions from Linear for each issue, 2) Identify potential dependencies between issues (does Issue B depend on Issue A?), 3) Determine optimal execution order, 4) Identify which issues can run in parallel vs must be sequential, 5) Assess overall complexity and time estimate."
+   - Thought: "Executing [N] issues in batch: [list IDs]. I need to:
+     1) Fetch titles/descriptions from Linear for each issue
+     2) Identify potential dependencies between issues
+       (does Issue B depend on Issue A?)
+     3) Determine optimal execution order
+     4) Identify which issues can run in parallel vs must be sequential
+     5) Assess overall complexity and time estimate."
    - thoughtNumber: 1
    - totalThoughts: 7
    - nextThoughtNeeded: true
@@ -131,15 +143,17 @@ Context: `{{context}}`
    - Use `/work:performwork` slash command
    - Track success/failure
    - Report progress:
-     ```
+
+     ```text
      Processing issue [N]/[Total]: [ISSUE-ID]
      ```
 
-3. **After all issues:**
+5. **After all issues:**
    - Use `/work:validate` slash command with `--full` flag
 
-4. **Final report:**
-   ```
+6. **Final report:**
+
+   ```text
    ═══════════════════════════════════════════════════════════
    ✅ BATCH-PROCESS WORKFLOW COMPLETE
    ═══════════════════════════════════════════════════════════
@@ -183,7 +197,8 @@ Context: `{{context}}`
    - Compare before/after
 
 5. **Final report:**
-   ```
+
+   ```text
    ═══════════════════════════════════════════════════════════
    ✅ HEALTH-CHECK-FIX WORKFLOW COMPLETE
    ═══════════════════════════════════════════════════════════
@@ -218,7 +233,8 @@ Context: `{{context}}`
    - Wait for issue creation
 
 3. **Final report:**
-   ```
+
+   ```text
    ═══════════════════════════════════════════════════════════
    ✅ CREATE-AND-VALIDATE WORKFLOW COMPLETE
    ═══════════════════════════════════════════════════════════
@@ -240,13 +256,15 @@ Context: `{{context}}`
 **If any step fails:**
 
 1. **Report failure:**
-   ```
+
+   ```text
    ❌ Workflow step failed: [step name]
    Error: [error details]
    ```
 
 2. **Ask user:**
-   ```
+
+   ```text
    Options:
    1. Continue to next step (skip failed step)
    2. Retry failed step
@@ -265,9 +283,11 @@ Context: `{{context}}`
 ## Notes on Workflow Execution
 
 - **Sequential execution:** Steps run one after another (not parallel)
-- **Slash command integration:** Each step uses actual slash commands (not direct tool calls)
+- **Slash command integration:** Each step uses actual slash
+  commands (not direct tool calls)
 - **Progress tracking:** Clear progress indicators after each step
-- **Error resilience:** Failures don't crash entire workflow, user can choose to continue
+- **Error resilience:** Failures don't crash entire workflow. Users can choose
+  to continue
 - **Comprehensive reporting:** Final reports show full workflow results
 
 ---
@@ -300,16 +320,20 @@ Context: `{{context}}`
 
 ## Error Handling
 
-### If slash command not found:
+### If slash command not found
+
 - Report: "❌ Command not available: [command]"
 - Check if work plugin is properly installed
 - Suggest running `/work:diagnostic`
 
-### If context missing but required:
+### If context missing but required
+
 - Report: "❌ Context required for this workflow"
 - Show usage example
 - STOP execution
 
 ---
 
-**Remember:** This is an executable prompt. Actually invoke the slash commands mentioned. Actually wait for their completion. Actually report accurate progress.
+**Remember:** This is an executable prompt. Actually invoke the slash
+commands mentioned. Actually wait for their completion, then report
+accurate progress.

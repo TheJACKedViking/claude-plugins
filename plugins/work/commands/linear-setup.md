@@ -1,10 +1,12 @@
 ---
-description: Initialize Linear workspace with batch operations, error recovery, and comprehensive configuration
+description: Initialize Linear workspace with setup, recovery, and config
 ---
 
 # Linear Setup - Executable Instructions
 
-**Your task:** Initialize and configure the Linear workspace for optimal use with the work plugin commands.
+**Your task:** Initialize and configure the Linear workspace.
+
+Prepare it for optimal use with the work plugin commands.
 
 ## Instructions
 
@@ -17,7 +19,8 @@ description: Initialize Linear workspace with batch operations, error recovery, 
    - Verify it's in the connected servers list
 
 2. **If Linear MCP not connected:**
-   ```
+
+   ```text
    ❌ Linear MCP Server Not Connected!
 
    Cannot proceed with Linear setup without MCP connection.
@@ -30,10 +33,12 @@ description: Initialize Linear workspace with batch operations, error recovery, 
 
    See /work:diagnostic for detailed MCP setup instructions.
    ```
+
    - STOP execution
 
 3. **If connected:**
-   ```
+
+   ```text
    ✅ Linear MCP server connected
    ```
 
@@ -50,7 +55,8 @@ description: Initialize Linear workspace with batch operations, error recovery, 
    - Common tool: `mcp__linear__list_teams`
 
 3. **Display workspace info:**
-   ```
+
+   ```text
    📊 Linear Workspace Information:
    - Organization: [name]
    - Teams: [N] teams found
@@ -65,7 +71,8 @@ description: Initialize Linear workspace with batch operations, error recovery, 
    - Store the team ID for later use
 
 5. **If team not found:**
-   ```
+
+   ```text
    ⚠️ "The Reiss Group" team not found in workspace
 
    Available teams:
@@ -85,7 +92,8 @@ description: Initialize Linear workspace with batch operations, error recovery, 
    - Common tool: `mcp__linear__list_issues` with limit=5
 
 2. **Display recent issues:**
-   ```
+
+   ```text
    📋 Recent Issues (last 5):
    1. [ID] - [Title] ([State])
    2. [ID] - [Title] ([State])
@@ -104,11 +112,13 @@ description: Initialize Linear workspace with batch operations, error recovery, 
 1. **Create a test issue:**
    - Team: The Reiss Group (or first available team)
    - Title: "Test issue from Linear setup"
-   - Description: "This is a test issue created by /work:linear-setup command to verify issue creation works."
+   - Description: "This is a test issue created by /work:linear-setup command
+     to verify issue creation works."
    - Use tool: `mcp__linear__create_issue` or similar
 
 2. **If creation succeeds:**
-   ```
+
+   ```text
    ✅ Test issue created successfully!
    - Issue ID: [ID]
    - URL: [url]
@@ -117,7 +127,8 @@ description: Initialize Linear workspace with batch operations, error recovery, 
    ```
 
 3. **If creation fails:**
-   ```
+
+   ```text
    ❌ Failed to create test issue
 
    Error: [error message]
@@ -140,12 +151,14 @@ description: Initialize Linear workspace with batch operations, error recovery, 
    - Use tool: `mcp__linear__create_comment` or similar
 
 2. **If succeeds:**
-   ```
+
+   ```text
    ✅ Comment creation works
    ```
 
 3. **If fails:**
-   ```
+
+   ```text
    ⚠️ Comment creation failed
 
    This may impact performwork command's ability to update issues.
@@ -161,7 +174,8 @@ description: Initialize Linear workspace with batch operations, error recovery, 
    - Use tool: `mcp__linear__list_workflow_states` or query from team
 
 2. **Display states:**
-   ```
+
+   ```text
    🔄 Available Workflow States:
    - [State 1] (ID: [id])
    - [State 2] (ID: [id])
@@ -181,20 +195,24 @@ description: Initialize Linear workspace with batch operations, error recovery, 
 1. **Test Sequential-thinking MCP:**
    - Attempt a simple Sequential-thinking call:
 
-   - Thought: "Testing Sequential-thinking MCP integration for Linear setup. This is a simple test to verify the tool is working correctly. I should confirm the tool responds and returns valid output."
+   - Thought: "Testing Sequential-thinking MCP integration for Linear setup.
+    This is a simple test to verify the tool is working correctly.
+    Confirm the tool responds and returns valid output."
    - thoughtNumber: 1
    - totalThoughts: 2
    - nextThoughtNeeded: true
 
 2. **If works:**
-   ```
+
+   ```text
    ✅ Sequential-thinking MCP working
 
    This enables intelligent requirement extraction and duplicate detection.
    ```
 
 3. **If fails:**
-   ```
+
+   ```text
    ⚠️ Sequential-thinking MCP not available
 
    Impact:
@@ -210,10 +228,8 @@ description: Initialize Linear workspace with batch operations, error recovery, 
 
 **Generate setup report:**
 
-```
-═══════════════════════════════════════════════════════════
-✅ LINEAR SETUP COMPLETE
-═══════════════════════════════════════════════════════════
+```text
+--- LINEAR SETUP COMPLETE ---
 
 Connection Status:
   📡 Linear MCP: ✅ Connected
@@ -232,16 +248,15 @@ Verified Capabilities:
 
 Test Issue Created:
   🔗 [Issue URL]
-  (You can safely delete this test issue)
 
-─────────────────────────────────────────────────────────────
+--- Summary ---
 
 Ready to Use:
   ✅ /work:creatework - Create Linear issues with intelligence
   ✅ /work:performwork - Execute Linear issues with type safety
   [✅/⚠️] Other commands depending on test results
 
-═══════════════════════════════════════════════════════════
+--- END ---
 ```
 
 ---
@@ -250,7 +265,7 @@ Ready to Use:
 
 **Ask user about test issue:**
 
-```
+```text
 The setup created a test issue: [Issue ID]
 
 Would you like me to:
@@ -262,6 +277,7 @@ Test issues are safe to delete - they were only for verification.
 ```
 
 **If user requests deletion:**
+
 - Use Linear MCP delete/archive issue tool
 - Confirm deletion
 
@@ -269,17 +285,20 @@ Test issues are safe to delete - they were only for verification.
 
 ## Error Handling
 
-### If Linear MCP fails during setup:
+### If Linear MCP fails during setup
+
 - Report which phase failed
 - Provide diagnostic information
 - Suggest running `/work:diagnostic linear` for details
 
-### If permissions insufficient:
+### If permissions insufficient
+
 - Report: "Linear API key may lack required permissions"
 - Suggest checking Linear API token scopes at linear.app/settings/api
 - Required scopes: read, write, issues:create, comment:create
 
-### If no teams found:
+### If no teams found
+
 - Report: "No teams found in Linear workspace"
 - Suggest: "Verify API key is for correct organization"
 
@@ -315,4 +334,6 @@ Test issues are safe to delete - they were only for verification.
 
 ---
 
-**Remember:** This is an executable prompt. Actually test the Linear MCP connections. Actually create the test issue. Actually verify the capabilities work.
+**Remember:** This is an executable prompt. Test the Linear MCP connections.
+
+Create the test issue, and verify the capabilities work.

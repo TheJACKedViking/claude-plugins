@@ -193,6 +193,7 @@ marketplace exec my-plugin:my-command
 Enterprise-grade Linear issue management with intelligent workflows, type safety verification, and comprehensive validation. Streamlines the entire lifecycle of Linear issues from creation to validation.
 
 **Commands**:
+
 - `/work:creatework <description>` - Create Linear issues with smart deduplication
 - `/work:performwork <issue-id>` - Execute issues with mandatory type checking
 - `/work:validate` - Run comprehensive validation
