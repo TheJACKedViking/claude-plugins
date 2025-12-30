@@ -1,11 +1,22 @@
 {
   "name": "work",
-  "description": "Enterprise Linear issue management with intelligent workflows, type safety verification, and comprehensive validation",
-  "version": "2.1.0",
+  "version": "3.0.0",
+  "description": "Enterprise Linear issue management with Thoughtbox reasoning, LSP code intelligence, and multi-agent execution",
   "author": {
     "name": "Claude Code Marketplace Team",
     "url": "https://github.com/TheJACKedViking/claude-plugins"
   },
   "repository": "https://github.com/TheJACKedViking/claude-plugins",
-  "license": "MIT"
+  "homepage": "https://github.com/TheJACKedViking/claude-plugins/tree/main/work",
+  "license": "MIT",
+  "keywords": [
+    "linear",
+    "issue-management",
+    "thoughtbox",
+    "lsp",
+    "typescript",
+    "code-review",
+    "multi-agent",
+    "prd"
+  ]
 }

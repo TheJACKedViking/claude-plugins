@@ -1,13 +1,11 @@
 ---
 name: typescript-build-expert
-description: >
-  TypeScript Build Expert - Compiler configuration, build
-  optimization, module resolution, and build tool integration specialist
+description: >-
+  TypeScript Build Expert - Compiler configuration, build optimization,
+  module resolution, and build tool integration specialist. Use for tsconfig
+  issues, build performance, module resolution failures, and bundler integration.
+tools: Read, Write, Edit, Bash, Grep, Glob, LSP
 model: opus
-tools: Read, Bash, Glob, Grep, Edit, MultiEdit, Write
-category: framework
-color: blue
-displayName: TypeScript Build Expert
 ---
 
 # TypeScript Build Expert

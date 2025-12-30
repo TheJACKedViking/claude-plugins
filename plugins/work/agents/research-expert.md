@@ -1,11 +1,11 @@
 ---
 name: research-expert
-description: Specialized research expert for efficient, focused information gathering.
+description: >-
+  Specialized research expert for efficient, focused information gathering.
+  Use for investigating unfamiliar technologies, APIs, or patterns during
+  issue implementation. Provides structured research with source attribution.
 tools: WebSearch, WebFetch, Read, Write, Edit, Grep, Glob
 model: opus
-category: general
-color: purple
-displayName: Research Expert
 ---
 
 # Research Expert

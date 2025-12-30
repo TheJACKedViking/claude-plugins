@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/mcp-config.schema.json",
+  "$comment": "MCP servers required for the work plugin. These should be configured in your Claude Code settings.",
+  "mcpServers": {
+    "linear": {
+      "$comment": "Required: Linear MCP for issue management",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-linear"],
+      "env": {
+        "LINEAR_API_KEY": "${LINEAR_API_KEY}"
+      }
+    },
+    "thoughtbox": {
+      "$comment": "Required: Thoughtbox MCP for structured reasoning with mental models",
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-thoughtbox"]
+    },
+    "context7": {
+      "$comment": "Optional: Context7 MCP for documentation lookup",
+      "command": "npx",
+      "args": ["-y", "@context7/mcp-server"]
+    },
+    "sentry": {
+      "$comment": "Optional: Sentry MCP for error tracking (used by error-fix issues)",
+      "command": "npx",
+      "args": ["-y", "@sentry/mcp-server"],
+      "env": {
+        "SENTRY_AUTH_TOKEN": "${SENTRY_AUTH_TOKEN}"
+      }
+    }
+  }
+}
