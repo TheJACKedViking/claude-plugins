@@ -3,30 +3,37 @@
   "$comment": "MCP servers required for the work plugin. These should be configured in your Claude Code settings.",
   "mcpServers": {
     "linear": {
-      "$comment": "Required: Linear MCP for issue management",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-linear"],
-      "env": {
-        "LINEAR_API_KEY": "${LINEAR_API_KEY}"
+      "$comment": "Required: Linear MCP for issue management (HTTP streamable)",
+      "type": "http",
+      "url": "https://mcp.linear.app/mcp",
+      "headers": {
+        "Authorization": "Bearer ${LINEAR_API_KEY}"
       }
     },
     "thoughtbox": {
       "$comment": "Required: Thoughtbox MCP for structured reasoning with mental models",
+      "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-thoughtbox"]
+      "args": ["-y", "@kastalien-research/thoughtbox"]
     },
     "context7": {
-      "$comment": "Optional: Context7 MCP for documentation lookup",
-      "command": "npx",
-      "args": ["-y", "@context7/mcp-server"]
+      "$comment": "Optional: Context7 MCP for documentation lookup (HTTP streamable)",
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
+      }
     },
     "sentry": {
-      "$comment": "Optional: Sentry MCP for error tracking (used by error-fix issues)",
-      "command": "npx",
-      "args": ["-y", "@sentry/mcp-server"],
-      "env": {
-        "SENTRY_AUTH_TOKEN": "${SENTRY_AUTH_TOKEN}"
-      }
+      "$comment": "Optional: Sentry MCP for error tracking (HTTP streamable)",
+      "type": "http",
+      "url": "https://mcp.sentry.dev/mcp"
+    },
+    "serena": {
+      "$comment": "Required: Serena MCP for semantic code operations",
+      "type": "stdio",
+      "command": "serena",
+      "args": ["start-mcp-server", "--context=claude-code", "--project-from-cwd"]
     }
   }
 }
