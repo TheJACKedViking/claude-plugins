@@ -592,6 +592,19 @@ Parameters:
   limit: 20
 ```
 
+**For bug-fix issues: Also check Sentry for existing error reports:**
+
+```yaml
+# Only if execution_state.issue_type.detected == "bug-fix"
+Tool: mcp__claude_ai_Sentry__search_issues
+Parameters:
+  organizationSlug: "enflame-media-llc"
+  naturalLanguageQuery: "[error message or pattern from description]"
+  regionUrl: "https://us.sentry.io"
+```
+
+If Sentry issues found, include their URLs and frequency data in the Linear issue description under Technical Requirements > Context. This helps developers see error impact before starting work.
+
 **If potential duplicates found, analyze with Thoughtbox:**
 
 ```yaml

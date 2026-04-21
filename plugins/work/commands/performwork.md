@@ -735,29 +735,41 @@ Documentation lookup for unfamiliar libraries:
 
 ### [SENTRY_LOOKUP]
 
-Error context for error-fix issues:
+Error context for bug-fix and error-related issues:
 
-1. **Find organization:**
+**Config**: org `enflame-media-llc`, region `https://us.sentry.io`
+
+1. **Search for related Sentry issues:**
    ```yaml
-   Tool: mcp__sentry__find_organizations
-   Parameters: {}
+   Tool: mcp__claude_ai_Sentry__search_issues
+   Parameters:
+     organizationSlug: "enflame-media-llc"
+     naturalLanguageQuery: "[error message or worker name + error pattern]"
+     regionUrl: "https://us.sentry.io"
    ```
 
-   Store org slug for subsequent calls.
-
-2. **Search for related issues:**
+2. **Get error counts and trends:**
    ```yaml
-   Tool: mcp__sentry__search_issues
+   Tool: mcp__claude_ai_Sentry__search_events
    Parameters:
-     organizationSlug: "[org from step 1]"
-     query: "[error message or pattern]"
+     organizationSlug: "enflame-media-llc"
+     naturalLanguageQuery: "count of [error type] in [worker/project] this week"
+     regionUrl: "https://us.sentry.io"
    ```
 
-3. **Get issue details:**
+3. **Deep-dive into specific issue (stack trace, breadcrumbs):**
    ```yaml
-   Tool: mcp__sentry__get_issue_details
+   Tool: mcp__claude_ai_Sentry__get_sentry_resource
    Parameters:
-     issueId: "[issue id from search]"
+     issueUrl: "[sentry issue URL from step 1]"
+   ```
+
+4. **Check recent releases for regressions:**
+   ```yaml
+   Tool: mcp__claude_ai_Sentry__find_releases
+   Parameters:
+     organizationSlug: "enflame-media-llc"
+     regionUrl: "https://us.sentry.io"
    ```
 
 ---
@@ -937,9 +949,15 @@ Error context for error-fix issues:
    - Store in `execution_state.cache.requirements`
    - IF none found -> use title as single requirement
 
-12. **Check for Sentry context** (if error-fix issue):
+12. **Check for Sentry context** (for bug-fix issues or any issue mentioning errors):
 
-    Use [SENTRY_LOOKUP] pattern if description mentions error pattern.
+    Use [SENTRY_LOOKUP] pattern if:
+    - Issue type detected as `fix` (bug, fix, bugfix, hotfix, patch)
+    - Description mentions error codes, 500 errors, crashes, or exceptions
+    - Issue title references a specific worker returning errors
+    - Description includes Sentry issue URLs or error signatures
+
+    **Always search Sentry before starting implementation on error-related issues** — the stack trace and breadcrumbs provide crucial context that code reading alone cannot.
 
 13. **Update status** using [LINEAR_CALL]:
 
