@@ -248,6 +248,20 @@ The system learns from historical data:
 - Suggested labels
 - Similar issue detection
 
+### Memory Stack (Local, File-Based)
+
+The plugin persists and retrieves cross-session context through three local memory layers — never a cloud memory service (e.g. CORE memory):
+
+| Layer | Location | Holds |
+|-------|----------|-------|
+| Built-in auto-memory | `MEMORY.md` + topic files in the agent's project memory directory (auto-loaded by Claude Code) | Session/work history, active issues, decisions |
+| Serena memories | `.serena/memories/` via `list_memories` / `read_memory` / `write_memory` | Codebase-wide patterns and conventions |
+| OpenWolf (when the project has `.wolf/`) | `.wolf/memory.md`, `.wolf/cerebrum.md`, `.wolf/buglog.json`, `.wolf/anatomy.md` | Action log, preferences/do-not-repeat, known bug fixes, file map |
+
+- `/work:performwork` searches the stack during initialization (Phase 1, `[MEMORY_STACK]` pattern) and persists learnings at completion (Phase 8.4)
+- `/work:creatework` searches the stack during duplicate detection (Phase 2.2) and records created issues (Phase 5.3)
+- Layers degrade gracefully: skip any layer whose files/tools are unavailable, but never skip all three
+
 ### Performance Optimization
 
 Built-in optimizations for enterprise scale:

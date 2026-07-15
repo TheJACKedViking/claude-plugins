@@ -772,6 +772,35 @@ Error context for bug-fix and error-related issues:
      regionUrl: "https://us.sentry.io"
    ```
 
+### [MEMORY_STACK]
+
+Local, file-based memory — three layers. NEVER use cloud memory services (e.g. CORE memory); all persistence goes to these files.
+
+| Layer | Location | Holds |
+|-------|----------|-------|
+| Built-in auto-memory | `MEMORY.md` + topic files in the agent's project memory dir (auto-loaded by Claude Code) | Session/work history, active issues, decisions |
+| Serena memories | `.serena/memories/` via `mcp__serena__list_memories` / `read_memory` / `write_memory` | Codebase-wide patterns, conventions, architecture notes |
+| OpenWolf (if `.wolf/` exists) | `.wolf/memory.md` (action log), `.wolf/cerebrum.md` (preferences / learnings / do-not-repeat), `.wolf/buglog.json` (known fixes), `.wolf/anatomy.md` (file map) | Operational context per `.wolf/OPENWOLF.md` |
+
+**RETRIEVE** (before implementation):
+
+```text
+1. Review auto-memory MEMORY.md entries matching {{issueId}}, the affected files, or the feature area
+2. mcp__serena__list_memories() -> read_memory any memory matching the topic
+3. IF .wolf/ exists: check cerebrum.md (Do-Not-Repeat), buglog.json (for fix-type issues), memory.md (recent related work)
+```
+
+**PERSIST** (at completion):
+
+```text
+1. Auto-memory: add/update a MEMORY.md (or topic file) entry — problem, solution, files, lessons learned
+2. Serena: write_memory for any NEW codebase-wide pattern or convention discovered
+3. IF .wolf/ exists: append session summary to memory.md; log user corrections to cerebrum.md;
+   log every bug fixed to buglog.json (error_message, root_cause, fix, tags)
+```
+
+Skip a layer gracefully if its files/tools are unavailable — but never skip all three.
+
 ---
 
 ## Execution Phases
@@ -949,7 +978,11 @@ Error context for bug-fix and error-related issues:
    - Store in `execution_state.cache.requirements`
    - IF none found -> use title as single requirement
 
-12. **Check for Sentry context** (for bug-fix issues or any issue mentioning errors):
+12. **Search memory stack** (use [MEMORY_STACK] RETRIEVE):
+
+    Check all three layers for prior context on {{issueId}}, the affected files, or the feature area — prior solutions, known fixes (`.wolf/buglog.json`), do-not-repeat entries, and codebase patterns (Serena memories). Surfacing a known fix here can short-circuit Phases 2-5.
+
+13. **Check for Sentry context** (for bug-fix issues or any issue mentioning errors):
 
     Use [SENTRY_LOOKUP] pattern if:
     - Issue type detected as `fix` (bug, fix, bugfix, hotfix, patch)
@@ -959,7 +992,7 @@ Error context for bug-fix and error-related issues:
 
     **Always search Sentry before starting implementation on error-related issues** — the stack trace and breadcrumbs provide crucial context that code reading alone cannot.
 
-13. **Update status** using [LINEAR_CALL]:
+14. **Update status** using [LINEAR_CALL]:
 
     ```yaml
     Tool: mcp__linear__update_issue
@@ -1791,7 +1824,25 @@ IF `execution_state.flags.push`:
 
    IF not all met -> keep current state, report what's missing
 
-#### 8.4 Final Report
+#### 8.4 Memory Persistence
+
+**Persist session learnings** (use [MEMORY_STACK] PERSIST — MANDATORY, all layers that exist):
+
+1. **Auto-memory**: add a `MEMORY.md`/topic-file entry for {{issueId}}:
+
+   ```text
+   {{issueId}}: [Title]
+   **Problem**: [what was being solved]
+   **Solution**: [what was implemented and why]
+   **Files Modified**: [key files]
+   **Lessons Learned**: [what worked, what to avoid, reusable patterns]
+   ```
+
+2. **Serena**: `mcp__serena__write_memory` for any new codebase-wide pattern/convention discovered during implementation.
+
+3. **OpenWolf** (if `.wolf/` exists): append session summary to `.wolf/memory.md`; record corrections/learnings in `.wolf/cerebrum.md`; IF commit_type == "fix" OR any error was debugged -> append entry to `.wolf/buglog.json`.
+
+#### 8.5 Final Report
 
 ```text
 ═══════════════════════════════════════════════════════════════
@@ -1902,11 +1953,13 @@ reconnects to the existing reasoning chain.
 
 - [ ] Called Linear MCP to fetch issue?
 - [ ] Cached files BEFORE mode detection?
+- [ ] Searched memory stack (auto-memory + Serena + OpenWolf) before implementing?
 - [ ] Captured Thoughtbox sessionId?
 - [ ] Used LSP hover for type information?
 - [ ] Used Context7 for unfamiliar libraries?
 - [ ] Used correct commit type (feat/fix/refactor)?
 - [ ] Showed progress indicators?
+- [ ] Persisted learnings to memory stack (Phase 8.4)?
 - [ ] Displayed actual issue URL in final report?
 - [ ] Created PR if --push flag?
 

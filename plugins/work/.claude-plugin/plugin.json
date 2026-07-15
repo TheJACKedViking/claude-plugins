@@ -1,7 +1,7 @@
 {
   "name": "work",
-  "version": "3.0.1",
-  "description": "Enterprise Linear issue management with Thoughtbox reasoning, LSP code intelligence, and multi-agent execution",
+  "version": "3.1.0",
+  "description": "Enterprise Linear issue management with Thoughtbox reasoning, LSP code intelligence, multi-agent execution, and local memory stack (auto-memory + Serena + OpenWolf)",
   "author": {
     "name": "Claude Code Marketplace Team",
     "url": "https://github.com/TheJACKedViking/claude-plugins"
@@ -17,6 +17,7 @@
     "typescript",
     "code-review",
     "multi-agent",
-    "prd"
+    "prd",
+    "memory"
   ]
 }

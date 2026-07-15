@@ -592,6 +592,16 @@ Parameters:
   limit: 20
 ```
 
+**Also search the local memory stack for prior/related work** (NEVER a cloud memory service — all memory is local files):
+
+```text
+1. Auto-memory: grep MEMORY.md + topic files (agent's project memory dir) for the feature area, affected files, or error message
+2. Serena: mcp__serena__list_memories() -> read_memory any memory matching the topic
+3. OpenWolf (if .wolf/ exists): check .wolf/memory.md for recent related sessions and .wolf/buglog.json for known fixes of the reported error
+```
+
+A memory hit may reveal the work was already done, is in progress under another issue ID, or has a known fix — feed this into the duplicate decision below and cite it in the issue's Context section.
+
 **For bug-fix issues: Also check Sentry for existing error reports:**
 
 ```yaml
@@ -986,7 +996,17 @@ PRD COMPLIANCE REPORT:
 COMPLIANCE SCORE: 9/9 sections = 100% ✓
 ```
 
-### 5.3 Handle Failure
+### 5.3 Memory Persistence
+
+After a successful creation, record it in the local memory stack so future sessions (and future duplicate checks) can find it:
+
+```text
+1. Auto-memory: add a one-line MEMORY.md note — "[IDENTIFIER] filed: [title] ([feature area])" — under the relevant active-issues/topic entry
+2. OpenWolf (if .wolf/ exists): append to .wolf/memory.md — | HH:MM | filed [IDENTIFIER]: [title] | Linear | created | ~tokens |
+3. Serena: only if issue analysis surfaced a NEW codebase-wide pattern -> write_memory
+```
+
+### 5.4 Handle Failure
 
 **If creation failed:**
 
