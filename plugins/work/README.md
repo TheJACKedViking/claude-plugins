@@ -131,7 +131,7 @@ Risks:   [what this could break]
 
 Durability comes from writing reasoning where the next agent will look — Linear checkpoint/handoff/completion comments plus the memory stack — not from an in-flight session handle. A `--resume` therefore works in a brand-new Claude Code session on a different machine.
 
-When a decision is **not the agent's to make** (design choice, product/policy call, a selection with no technical tiebreaker), the issue goes to `Needs Action` with the question rather than a guess.
+When a decision is **not the agent's to make** — a design choice, a product/policy call, or any pick between viable options — the agent never guesses. Autonomy covers execution mechanics, not which option is right. If the engineer is in the session it asks directly; on an unattended run the issue goes to `Needs Action` with the question, the options, and a recommendation.
 
 ## Memory Stack (Local, File-Based)
 

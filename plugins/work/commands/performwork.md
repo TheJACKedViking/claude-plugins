@@ -338,7 +338,7 @@ Parse error code from output
 |-------|--------|------------|
 | Execution starts (claim the issue) | In Progress | Yes |
 | Execution stops before completion (any reason: fatal error, context exhaustion, user interrupt, deprioritized) | Standby + handoff comment | Yes |
-| Decision only a human can make (design choice, option selection, product/policy call) | Needs Action + question comment | Yes |
+| Decision that is not the agent's to make (design choice, any pick between viable options, product/policy call) — unattended run | Needs Action + question comment | Yes |
 | Blocking dependency found (another issue must land first) | On Hold | Yes |
 | Implementation complete, PR open, awaiting review | In Review | Yes |
 | Duplicate detected | Duplicate | No |
@@ -602,7 +602,9 @@ Structured reasoning, done inline — **no external reasoning service**. Reasoni
 
 3. **Record the decision**: push `{ question, options, chosen, rationale }` onto `execution_state.analysis.decisions`. Anything a future session would need to understand *why* the code looks like this goes into the completion comment and into the memory stack at Phase 8.4.
 
-4. **If the decision is not yours to make** — a design choice, a product/policy call, a selection among options with no technical tiebreaker — push it to `execution_state.analysis.open_questions`, then run [RELEASE_CLAIM] with `Needs Action`. Do not guess; a guessed decision is expensive to unwind after the code is written.
+4. **If the decision is not yours to make** — a design choice, a product/policy call, or **any pick between viable options** — push it to `execution_state.analysis.open_questions`. Do not guess; a guessed decision is expensive to unwind after the code is written. Autonomy covers execution mechanics (which agent to deploy, what order to work in), not which option is right.
+   - **Engineer is in the session** -> ask them directly and keep the claim. Parking work you can unblock in one exchange only adds latency.
+   - **Unattended run** — batch execution, subagent, scheduled, or the answer will not arrive this session -> run [RELEASE_CLAIM] with `Needs Action`.
 
 **Skip depth, not rigor**: `--simple` and `ultra_fast` mode reduce [ANALYSIS] to a single decomposition pass. They never skip step 4.
 

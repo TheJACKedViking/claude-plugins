@@ -236,7 +236,7 @@ Structured reasoning, done inline — **no external reasoning service**. Reasoni
 
 3. **Record the decision**: push `{ question, options, chosen, rationale }` onto `execution_state.analysis.decisions`. Anything a future session would need to understand *why* the issue is scoped this way goes into the PRD body and into the memory stack at Phase 5.3.
 
-4. **If the decision is not yours to make** — a product, design, or policy call, or a selection among options with no technical tiebreaker — push it to `execution_state.analysis.open_questions` and surface it in the issue's Open Questions section rather than guessing.
+4. **If the decision is not yours to make** — a product, design, or policy call, or **any pick between viable options** — push it to `execution_state.analysis.open_questions` and surface it in the issue's Open Questions section rather than guessing. If the engineer is in the session, ask them directly instead of deferring the question into the issue.
 
 **Skip depth, not rigor**: `--simple` reduces [ANALYSIS] to a single decomposition pass. It never skips step 4.
 
