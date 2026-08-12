@@ -7,7 +7,7 @@
     {
       "name": "work",
       "source": "./plugins/work",
-      "description": "Enterprise Linear issue management with intelligent workflows, type safety verification, and comprehensive validation"
+      "description": "Enterprise Linear issue management with agent-ownership statuses, intelligent workflows, type safety verification, and comprehensive validation"
     }
   ]
 }

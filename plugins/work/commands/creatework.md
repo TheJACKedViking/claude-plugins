@@ -16,7 +16,7 @@ skills: prd-format
 
 - **DO NOT** just read and acknowledge these steps
 - **DO** immediately begin executing them
-- **ACTUALLY CALL** the MCP tools mentioned (Thoughtbox, LSP, Linear, Serena, Context7, etc.)
+- **ACTUALLY CALL** the MCP tools mentioned (LSP, Linear, Serena, Context7, etc.)
 - **START NOW** with Phase 0 below
 - **YOU ARE EXECUTING THIS TASK RIGHT NOW** - not planning, not reviewing, EXECUTING
 
@@ -42,7 +42,7 @@ skills:
 
 flags:
   --dry-run: Preview what would be created without creating
-  --simple: Skip Thoughtbox analysis for simple issues (direct creation)
+  --simple: Skip the deep [ANALYSIS] passes for simple issues (direct creation)
   --force: Override duplicate detection and create anyway
   --template: Use specific template (bug-fix, feature, refactor, performance, discovery)
   --project: Associate with Linear project by name or ID
@@ -56,27 +56,27 @@ issue_types:
   # Auto-detected from description keywords or --template flag
   bug-fix:
     keywords: ["bug", "fix", "broken", "error", "crash", "fails", "not working"]
-    mental_models: ["five-whys", "rubber-duck"]
+    reasoning_lenses: ["five-whys", "rubber-duck"]
     prd_focus: "The Bug + Root Cause"
     labels: ["bug"]
   feature:
     keywords: ["add", "implement", "create", "new", "feature", "support"]
-    mental_models: ["decomposition", "assumption-surfacing", "pre-mortem"]
+    reasoning_lenses: ["decomposition", "assumption-surfacing", "pre-mortem"]
     prd_focus: "Full PRD with user stories"
     labels: ["feature"]
   refactor:
     keywords: ["refactor", "cleanup", "improve", "optimize", "restructure"]
-    mental_models: ["trade-off-matrix", "abstraction-laddering"]
+    reasoning_lenses: ["trade-off-matrix", "abstraction-laddering"]
     prd_focus: "Preserve behavior + improve quality"
     labels: ["refactor"]
   performance:
     keywords: ["slow", "performance", "speed", "optimize", "latency", "memory"]
-    mental_models: ["fermi-estimation", "constraint-relaxation"]
+    reasoning_lenses: ["fermi-estimation", "constraint-relaxation"]
     prd_focus: "Measurable benchmarks"
     labels: ["performance"]
   discovery:
     keywords: ["investigate", "research", "explore", "understand", "spike"]
-    mental_models: ["decomposition", "assumption-surfacing"]
+    reasoning_lenses: ["decomposition", "assumption-surfacing"]
     prd_focus: "Open Questions emphasis"
     labels: ["discovery", "spike"]
 
@@ -89,27 +89,29 @@ label_detection:
     docs: ["documentation", "README", "docs", "comment"]
     testing: ["test", "spec", "coverage", "e2e", "unit"]
 
-thoughtbox:
-  # Tiered mental model usage
-  tier1:  # Always use (critical decisions)
+analysis:
+  # Reasoning lenses applied inline via [ANALYSIS]. No external reasoning service —
+  # durable reasoning lives in the Linear issue itself and the memory stack
+  # (auto-memory, Serena memories, OpenWolf .wolf/).
+  tier1:  # Always apply (critical decisions)
     - decomposition         # Break down requirements
     - assumption-surfacing  # Extract implicit requirements
-  tier2:  # Use if complexity > simple
+  tier2:  # Apply if complexity > simple
     - steelmanning          # Duplicate analysis
     - trade-off-matrix      # Structure optimization
-  tier3:  # Use for complex issues
+  tier3:  # Apply for complex issues
     - pre-mortem            # Risk assessment
     - five-whys             # Root cause for bugs
 
-  # Branching for alternative approaches
-  branching:
+  # Comparing alternative approaches
+  alternatives:
     when: "Multiple valid approaches exist"
-    example: "branchFromThought: 2, branchId: 'approach-a'"
+    how: "Lay the options side by side in one pass, then state the chosen one and why"
 
-  # Revision for updating earlier thinking
+  # Revising earlier reasoning
   revision:
     when: "New information invalidates earlier analysis"
-    example: "isRevision: true, revisesThought: 3"
+    how: "State the original assumption, the new information, and the updated conclusion"
 
 lsp:
   # Operations for code analysis
@@ -153,7 +155,7 @@ execution_state = {
   issue_type: {
     detected: null,        // Auto-detected or from --template
     keywords_matched: [],  // Which keywords triggered detection
-    mental_models: [],     // Models to use for this type
+    reasoning_lenses: [],  // Lenses to apply for this type
     prd_focus: null,       // Special PRD section emphasis
   },
 
@@ -164,17 +166,11 @@ execution_state = {
     custom: [],            // User-specified
   },
 
-  // Thoughtbox tracking
-  thoughtbox: {
-    session_id: null,      // CAPTURED from tool response
-    thought_count: 0,
-    mental_models_used: [],
-    branches: [],          // Alternative approach branches
-    revisions: [],         // Revised thoughts
-  },
-
-  // Analysis results
+  // Analysis results (inline reasoning — see [ANALYSIS])
   analysis: {
+    lenses_used: [],       // e.g. ["decomposition", "assumption-surfacing"]
+    decisions: [],         // { question, options, chosen, rationale }
+    open_questions: [],    // Surface in the issue's Open Questions section
     requirements: {
       explicit: [],
       implicit: [],
@@ -221,6 +217,29 @@ Display progress indicator for long-running operations:
   └─ [Current step...]
 ```
 
+### [ANALYSIS]
+
+Structured reasoning, done inline — **no external reasoning service**. Reasoning is durable because it is written where the next agent will look: the Linear issue itself (Context, Open Questions, AI Metadata) and the memory stack (auto-memory, Serena memories, OpenWolf `.wolf/`).
+
+1. **Name the lens** from the `analysis` tiers in Configuration (decomposition, assumption-surfacing, steelmanning, trade-off-matrix, pre-mortem, five-whys). Append it to `execution_state.analysis.lenses_used`.
+
+2. **Write the analysis in the response** using this shape:
+
+   ```text
+   [LENS] — [what is being decided]
+
+   Given: [facts established so far — from the description, memory stack, LSP, Serena, Linear]
+   Options: [the real alternatives, not strawmen]
+   Chosen: [the option] because [rationale tied to the Given]
+   Risks: [what this could break; what would make this the wrong call]
+   ```
+
+3. **Record the decision**: push `{ question, options, chosen, rationale }` onto `execution_state.analysis.decisions`. Anything a future session would need to understand *why* the issue is scoped this way goes into the PRD body and into the memory stack at Phase 5.3.
+
+4. **If the decision is not yours to make** — a product, design, or policy call, or a selection among options with no technical tiebreaker — push it to `execution_state.analysis.open_questions` and surface it in the issue's Open Questions section rather than guessing.
+
+**Skip depth, not rigor**: `--simple` reduces [ANALYSIS] to a single decomposition pass. It never skips step 4.
+
 ### [CONTEXT7_LOOKUP]
 
 When encountering unfamiliar libraries or APIs:
@@ -257,11 +276,11 @@ Parameters: [operation-specific]
 ```text
 Phase 0: Initialize
     ↓
-Phase 1: Extract Requirements (Thoughtbox + LSP)  ──┐
+Phase 1: Extract Requirements (Analysis + LSP)    ──┐
     ↓                                               │ PARALLEL
 Phase 2: Check Duplicates (Linear search)        ──┘
     ↓
-Phase 3: Optimize Structure (Thoughtbox)
+Phase 3: Optimize Structure (Analysis)
     ↓
 Phase 4: Create Issue (Linear MCP)
     ↓
@@ -312,7 +331,7 @@ FOR each issue_type in config.issue_types:
 
 IF keywords_matched.length > 0:
   execution_state.issue_type.detected = [type with most matches]
-  execution_state.issue_type.mental_models = issue_types[detected].mental_models
+  execution_state.issue_type.reasoning_lenses = issue_types[detected].reasoning_lenses
   execution_state.issue_type.prd_focus = issue_types[detected].prd_focus
   execution_state.labels.type = issue_types[detected].labels
 ELSE:
@@ -359,7 +378,7 @@ Detected:
 ├─ Issue Type: [type] (keywords: [matched keywords])
 ├─ Type Labels: [type labels]
 ├─ Area Labels: [area labels]
-└─ Mental Models: [models for this type]
+└─ Reasoning Lenses: [lenses for this type]
 
 Flags:
 ├─ dry_run: [yes/no]
@@ -376,7 +395,7 @@ Flags:
 ```text
 [PROGRESS] [Phase 0/5] Initialize - Simple mode enabled
 
-Simple mode: Skipping Thoughtbox analysis
+Simple mode: Reducing [ANALYSIS] to a single decomposition pass
 Direct creation with minimal processing...
 ```
 
@@ -391,14 +410,14 @@ Direct creation with minimal processing...
 
 ## Phase 1: Requirement Extraction
 
-**[PROGRESS] [Phase 1/5] Requirements - Extracting with Thoughtbox**
+**[PROGRESS] [Phase 1/5] Requirements - Extracting with [ANALYSIS]**
 
-### 1.1 Initialize Thoughtbox Session
+### 1.1 Opening Analysis
 
-Call `mcp__thoughtbox__thoughtbox`:
+Apply [ANALYSIS] with the `decomposition` lens. Write it out in the response:
 
-```yaml
-thought: "TASK: Extract comprehensive requirements from: '{{description}}'
+```text
+DECOMPOSITION — extract comprehensive requirements from: '{{description}}'
 
 DECOMPOSITION FRAMEWORK:
 1) OVERVIEW - The Problem: What is broken/missing/needed?
@@ -413,23 +432,17 @@ DECOMPOSITION FRAMEWORK:
 10) ACCEPTANCE CRITERIA: How do we know it's done?
 11) OPEN QUESTIONS: What unknowns exist?
 
-Beginning systematic extraction..."
-thoughtNumber: 1
-totalThoughts: 6
-nextThoughtNeeded: true
-sessionTitle: "creatework-{{description}}"
-sessionTags: ["creatework", "requirements", "linear"]
+Beginning systematic extraction...
 ```
 
-**CRITICAL: Capture sessionId from response:**
-```yaml
-execution_state.thoughtbox.session_id = [response.sessionId]
-```
+Append `decomposition` to `execution_state.analysis.lenses_used`.
 
 ### 1.2 Apply Assumption-Surfacing
 
-```yaml
-thought: "Applying ASSUMPTION-SURFACING mental model:
+Apply [ANALYSIS] with the `assumption-surfacing` lens:
+
+```text
+ASSUMPTION-SURFACING — what '{{description}}' leaves unsaid
 
 EXPLICIT from description:
 - [List what user directly stated]
@@ -439,16 +452,16 @@ IMPLICIT (hidden assumptions):
 - [What edge cases weren't mentioned?]
 - [What constraints are implied by context?]
 
-Extracting requirements for each PRD section..."
-thoughtNumber: 2
-totalThoughts: 6
-nextThoughtNeeded: true
+Extracting requirements for each PRD section...
 ```
+
+Anything that is a product/design call rather than a technical one goes to
+`execution_state.analysis.open_questions` ([ANALYSIS] step 4).
 
 ### 1.3 Assess Complexity
 
-```yaml
-thought: "COMPLEXITY ASSESSMENT:
+```text
+COMPLEXITY ASSESSMENT:
 
 Factors:
 - File count: [estimated]
@@ -464,11 +477,10 @@ SECTION COVERAGE CHECK:
 - Solution (Approach/Stories): [status]
 - Technical Requirements: [status]
 - Acceptance Criteria: [count] criteria
-- Open Questions: [count] questions"
-thoughtNumber: 3
-totalThoughts: 6
-nextThoughtNeeded: true
+- Open Questions: [count] questions
 ```
+
+Record the complexity call on `execution_state.analysis.decisions`.
 
 ### 1.4 Display Extraction Results
 
@@ -615,11 +627,10 @@ Parameters:
 
 If Sentry issues found, include their URLs and frequency data in the Linear issue description under Technical Requirements > Context. This helps developers see error impact before starting work.
 
-**If potential duplicates found, analyze with Thoughtbox:**
+**If potential duplicates found, apply [ANALYSIS] with the `steelmanning` lens:**
 
-```yaml
-Tool: mcp__thoughtbox__thoughtbox
-thought: "STEELMANNING ANALYSIS for duplicate detection:
+```text
+STEELMANNING — is this a duplicate?
 
 New request: '{{description}}'
 Most similar existing: '[existing issue title]'
@@ -637,11 +648,10 @@ STRONGEST CASE FOR DISTINCT:
 VERDICT:
 - Is this a real duplicate? [YES/NO]
 - Confidence: [%]
-- Recommendation: [create new | enhance existing]"
-thoughtNumber: 4
-totalThoughts: 6
-nextThoughtNeeded: true
+- Recommendation: [create new | enhance existing]
 ```
+
+Record the verdict on `execution_state.analysis.decisions`.
 
 #### Duplicate Decision Matrix
 
@@ -692,9 +702,10 @@ Continue to Phase 3, but add to description:
 
 ### 3.1 Apply Trade-Off Matrix
 
-```yaml
-Tool: mcp__thoughtbox__thoughtbox
-thought: "TRADE-OFF MATRIX for issue structure:
+Apply [ANALYSIS] with the `trade-off-matrix` lens:
+
+```text
+TRADE-OFF MATRIX — issue structure
 
 Issue: '{{description}}'
 Requirements count: [N]
@@ -719,19 +730,18 @@ PRIORITY ASSESSMENT:
 
 LABELS:
 - Type: [feature/bug/enhancement/refactor]
-- Area: [from codebase analysis]"
-thoughtNumber: 5
-totalThoughts: 6
-nextThoughtNeeded: true
+- Area: [from codebase analysis]
 ```
+
+Record the title and priority choices on `execution_state.analysis.decisions` — a future
+session reading the issue should be able to see why it was scoped and ranked this way.
 
 ### 3.2 Pre-Mortem for Complex Issues
 
-**IF complexity = complex:**
+**IF complexity = complex, apply [ANALYSIS] with the `pre-mortem` lens:**
 
-```yaml
-Tool: mcp__thoughtbox__thoughtbox
-thought: "PRE-MORTEM: Imagining this issue has FAILED.
+```text
+PRE-MORTEM — imagining this issue has FAILED
 
 FAILURE SCENARIOS:
 1. Scope creep: [what could expand?]
@@ -742,10 +752,7 @@ FAILURE SCENARIOS:
 PREVENTIVE MEASURES:
 - Add to Out of Scope: [items]
 - Add to Acceptance Criteria: [items]
-- Add to Open Questions: [items]"
-thoughtNumber: 6
-totalThoughts: 6
-nextThoughtNeeded: false
+- Add to Open Questions: [items]
 ```
 
 ### 3.3 Validate PRD Sections
@@ -861,7 +868,8 @@ Requirements Summary:
 └─ Open questions: [N]
 
 Analysis Performed:
-├─ Thoughtbox session: [session_id]
+├─ Reasoning lenses: [execution_state.analysis.lenses_used]
+├─ Key decisions: [one line each]
 ├─ LSP analysis: [yes/no]
 ├─ Duplicate check: [N] similar found ([X]% max similarity)
 └─ Context7 lookup: [yes/no]
@@ -882,7 +890,7 @@ Creating issue...
   "requirementCount": [N],
   "createdBy": "Claude Code /creatework",
   "createdAt": "[ISO timestamp]",
-  "thoughtboxSession": "[execution_state.thoughtbox.session_id]",
+  "reasoningLenses": ["[execution_state.analysis.lenses_used]"],
   "lspAnalysisPerformed": [true/false],
   "context7Used": [true/false],
   "prdVersion": "3.0"
@@ -906,7 +914,7 @@ available_labels = [labels returned from Linear]
 all_labels = [
   ...execution_state.labels.type,    # From issue type (bug, feature, etc.)
   ...execution_state.labels.area,    # From area detection (frontend, backend, etc.)
-  ...execution_state.labels.custom,  # From Thoughtbox recommendations
+  ...execution_state.labels.custom,  # From [ANALYSIS] recommendations
 ]
 // Only use labels that exist
 valid_labels = all_labels.filter(label =>
@@ -928,7 +936,7 @@ Parameters:
   description: "[full PRD markdown]"
   team: "[execution_state.team]"           # Team name or ID (Linear accepts both)
   project: "[execution_state.project]"     # Project ID (if set via --project flag)
-  priority: [0-4 from Thoughtbox decision]
+  priority: [0-4 from the Phase 3.1 [ANALYSIS] decision]
   labels: [valid_labels array]             # Only verified labels
   state: "Backlog"
 ```
@@ -968,8 +976,8 @@ Creation Metrics:
 └─ Duplicates checked: [N] similar found
 
 Analysis Summary:
-├─ Thoughtbox session: [session_id]
-├─ Mental models used: [list]
+├─ Reasoning lenses: [execution_state.analysis.lenses_used]
+├─ Key decisions: [execution_state.analysis.decisions — question, chosen, why]
 ├─ LSP analysis: [yes/no]
 └─ Context7 lookups: [N]
 
@@ -1056,11 +1064,11 @@ Extracted requirements have been saved. You can:
 - Fall back to Serena MCP for code analysis
 - Note in metadata: `"lspFallback": true`
 
-### Thoughtbox Session Fails
+### Context7 Unavailable
 
-- Continue with simpler extraction approach
-- Note in metadata: `"thoughtboxAvailable": false`
-- Use default complexity assessment
+- Fall back to Serena MCP + the memory stack for prior usage of the library
+- Note in metadata: `"context7Used": false`
+- Record the unresolved API question in `execution_state.analysis.open_questions`
 
 ---
 
@@ -1068,8 +1076,8 @@ Extracted requirements have been saved. You can:
 
 If the user specifies `--template=[type]`:
 
-| Template | Focus | Mental Models |
-|----------|-------|---------------|
+| Template | Focus | Reasoning Lenses |
+|----------|-------|------------------|
 | `bug-fix` | Root cause, regression test | FIVE-WHYS |
 | `feature` | Full user stories, API design | DECOMPOSITION |
 | `refactor` | Preserve behavior, impact analysis | findReferences |
@@ -1082,7 +1090,7 @@ If the user specifies `--template=[type]`:
 **This was an EXECUTABLE command, not documentation.**
 
 Did you:
-- [ ] Initialize Thoughtbox and capture session_id?
+- [ ] Apply [ANALYSIS] and record the reasoning lenses + decisions?
 - [ ] Use LSP/Serena for code analysis (if relevant)?
 - [ ] Use Context7 for unfamiliar libraries (if relevant)?
 - [ ] Search Linear for duplicate issues?

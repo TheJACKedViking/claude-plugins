@@ -19,7 +19,7 @@ Execute issue `{{issueId}}` with requirement adherence and type safety.
 |------|--------|
 | `--resume` | Resume from last checkpoint |
 | `--push` | Auto-push and create PR after commit |
-| `--simple` | Skip Thoughtbox analysis for trivial issues |
+| `--simple` | Skip the deep [ANALYSIS] passes for trivial issues |
 | `--project=NAME` | Associate with Linear project by name |
 | `--cycle=NAME` | Associate with Linear cycle (current, next, or name) |
 
@@ -65,18 +65,20 @@ linear_mcp:
   total_timeout: 120             # 2 minutes max
   retryable: ["proxy error", "timeout", "502", "503", "504", "ETIMEDOUT", "ECONNRESET"]
 
-thoughtbox:
-  # Tiered mental model usage
-  tier1:  # Always use (critical decisions)
+analysis:
+  # Reasoning lenses applied inline via [ANALYSIS]. No external reasoning service —
+  # durable reasoning lives in Linear comments and the memory stack (auto-memory,
+  # Serena memories, OpenWolf .wolf/).
+  tier1:  # Always apply (critical decisions)
     - decomposition         # Orchestration strategy
-    - pre-mortem           # Risk assessment
-    - inversion            # Follow-up assessment
-  tier2:  # Use if complexity > simple
-    - five-whys            # Wave failure analysis
-    - rubber-duck          # Debugging stuck errors
-  tier3:  # Use for complex issues
-    - abstraction-laddering  # Architectural decisions
-    - trade-off-matrix       # Multi-option choices
+    - pre-mortem            # Risk assessment
+    - inversion             # Follow-up assessment
+  tier2:  # Apply if complexity > simple
+    - five-whys             # Wave failure analysis
+    - rubber-duck           # Debugging stuck errors
+  tier3:  # Apply for complex issues
+    - abstraction-laddering # Architectural decisions
+    - trade-off-matrix      # Multi-option choices
 
 lsp:
   # Operations for code analysis
@@ -109,14 +111,14 @@ wave_strategies:
   wave2:
     approach: "Root cause analysis, broader context, different agent"
     changes:
-      - "Use five-whys mental model"
+      - "Apply the five-whys lens via [ANALYSIS]"
       - "Expand scope to related files"
       - "Try typescript-expert if type-expert failed"
       - "Check for missing type declarations"
   wave3:
     approach: "Architectural assessment, accept partial fixes"
     changes:
-      - "Use inversion mental model"
+      - "Apply the inversion lens via [ANALYSIS]"
       - "Identify truly unfixable issues"
       - "Create tracking issues for remaining"
       - "Accept conditional pass"
@@ -157,12 +159,11 @@ execution_state = {
     issue_labels: [],        // For commit type detection
   },
 
-  // Thoughtbox tracking
-  thoughtbox: {
-    session_id: null,        // CAPTURED from tool response
-    thought_count: 0,
-    mental_models_used: [],
-    branches: []
+  // Analysis tracking (inline reasoning — see [ANALYSIS])
+  analysis: {
+    lenses_used: [],         // e.g. ["decomposition", "pre-mortem"]
+    decisions: [],           // { question, options, chosen, rationale }
+    open_questions: []       // Escalate to Needs Action if a human must answer
   },
 
   // Tracking
@@ -331,14 +332,21 @@ Parse error code from output
 
 ### Status Transitions
 
+**`In Progress` is an ownership claim, not a progress label.** It means an agent or engineer is working the issue *right now*, so no other agent may pick it up. Every exit path below must move the issue OFF `In Progress` — an issue left there when nothing is working it is invisible to every other agent.
+
 | Event | Status | Reversible |
 |-------|--------|------------|
-| Execution starts | In Progress | Yes |
-| Blocking dependency found | On Hold | Yes |
-| Implementation complete | In Review | Yes |
+| Execution starts (claim the issue) | In Progress | Yes |
+| Execution stops before completion (any reason: fatal error, context exhaustion, user interrupt, deprioritized) | Standby + handoff comment | Yes |
+| Decision only a human can make (design choice, option selection, product/policy call) | Needs Action + question comment | Yes |
+| Blocking dependency found (another issue must land first) | On Hold | Yes |
+| Implementation complete, PR open, awaiting review | In Review | Yes |
 | Duplicate detected | Duplicate | No |
-| Fatal error | Cancelled | No |
-| All criteria met | Done | No |
+| Work is no longer wanted (explicit user decision only) | Canceled | No |
+
+**`Done` is not an agent transition.** An engineer moves `In Review` -> `Done` after code review and sign-off. This command never marks its own work `Done`.
+
+**Claimable statuses**: `Todo` (nothing started) and `Standby` (started, no active owner — free to claim and carry to completion). Never claim an issue already in `In Progress` unless the user explicitly directs you to work in coordination with the agent that owns it.
 
 ---
 
@@ -354,6 +362,44 @@ All Linear MCP calls use retry on transient errors:
 2. IF error matches `linear_mcp.retryable` -> wait (rolling 15-30s) -> retry
 3. IF timeout (2 min total) -> STOP with "Linear MCP unavailable"
 4. IF non-retryable error -> fail immediately
+
+### [CLAIM_ISSUE]
+
+Take ownership before the first edit. Run immediately after fetching the issue:
+
+1. Read the issue's current state.
+2. Branch on it:
+   - `Todo` or `Standby` -> claim it: `mcp__linear__update_issue { id, state: "In Progress" }` via [LINEAR_CALL].
+   - `In Progress` -> **another agent or engineer owns this issue.** STOP with "Issue {{issueId}} is In Progress — owned by another agent. Re-run only when it is in Standby, or confirm you are working in coordination with its owner." Proceed ONLY if the user explicitly directs coordinated work.
+   - `Needs Action` -> STOP "Waiting on an engineer decision"; report the open question from the issue comments.
+   - `In Review` -> STOP "Already complete and awaiting review"; use `--resume` only to act on review feedback.
+   - `Done` / `Canceled` / `Duplicate` -> STOP "Issue is closed".
+   - `Backlog` -> claim it (the user named this issue on the command line, which is an explicit request) and note in the report that it was pulled from the backlog.
+   - `On Hold` -> STOP "Issue is on hold"; report the blocker recorded on the issue. Resume only after the blocker is resolved.
+3. IF the claim call fails, do NOT continue silently — a missing claim is how two agents collide. Retry per [LINEAR_CALL], and if it still fails, report the unclaimed state and STOP.
+
+### [RELEASE_CLAIM]
+
+**MANDATORY on every exit path that is not "complete + PR open".** Never leave an issue in `In Progress` when this command stops running.
+
+1. Create a handoff comment via [LINEAR_CALL] `mcp__linear__create_comment`:
+
+   ```text
+   ## Handoff — execution stopped at Phase [N]
+
+   **Completed**: [what actually landed — requirements met, files modified, commits]
+   **Remaining**: [what is left, in the order the next agent should do it]
+   **Branch / worktree**: [name]  **PR**: [url or "none"]
+   **Blocker**: [why execution stopped]
+   **Checkpoint**: [execution_state.current_phase, key analysis decisions so far]
+   ```
+
+2. Set the state via [LINEAR_CALL]:
+   - Work is unfinished and a further agent can continue it -> `Standby`
+   - A human must decide or answer something first -> `Needs Action` (the comment must state the question, the options considered, and your recommendation)
+   - Another Linear issue must land first -> `On Hold`
+
+3. Report the new status in the final output so the user can see where the work was parked.
 
 ### [PROGRESS]
 
@@ -450,7 +496,7 @@ Save state for resume capability:
 
    Progress: [N]% complete
    Files modified: [list]
-   Thoughtbox session: [execution_state.thoughtbox.session_id]
+   Analysis so far: [execution_state.analysis.lenses_used, key decisions]
    Type errors: [initial: N, fixed: N, remaining: N]
    Lint errors: [initial: N, fixed: N, remaining: N]
 
@@ -464,7 +510,7 @@ Save state for resume capability:
    execution_state.checkpoint = {
      phase: current_phase,
      timestamp: new Date().toISOString(),
-     thoughtbox_session_id: execution_state.thoughtbox.session_id,
+     analysis: execution_state.analysis,
      files_modified: execution_state.cache.files_modified,
      resumable: true
    }
@@ -537,181 +583,97 @@ LSP-based code analysis pattern:
      character: [function char]
    ```
 
-### [THOUGHTBOX_SESSION]
+### [ANALYSIS]
 
-Initialize and manage Thoughtbox reasoning:
+Structured reasoning, done inline — **no external reasoning service**. Reasoning is durable because it is written where the next agent will look: Linear comments ([CHECKPOINT], [RELEASE_CLAIM], the completion comment) and the memory stack ([MEMORY_STACK]).
 
-1. **Start session and CAPTURE sessionId:**
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   Parameters:
-     thought: "[INITIAL ANALYSIS]"
-     thoughtNumber: 1
-     totalThoughts: [estimated]
-     nextThoughtNeeded: true
-     sessionTitle: "performwork-{{issueId}}"
-     sessionTags: ["performwork", "execution", "{{issueId}}"]
+1. **Name the lens** from the `analysis` tiers in Configuration (decomposition, pre-mortem, inversion, five-whys, rubber-duck, abstraction-laddering, trade-off-matrix). Append it to `execution_state.analysis.lenses_used`.
+
+2. **Write the analysis in the response** using this shape:
+
+   ```text
+   [LENS] — [what is being decided]
+
+   Given: [facts established so far — from the issue, memory stack, LSP, Serena]
+   Options: [the real alternatives, not strawmen]
+   Chosen: [the option] because [rationale tied to the Given]
+   Risks: [what this could break; what would make this the wrong call]
    ```
 
-   **CRITICAL**: Store returned `sessionId` in `execution_state.thoughtbox.session_id`
+3. **Record the decision**: push `{ question, options, chosen, rationale }` onto `execution_state.analysis.decisions`. Anything a future session would need to understand *why* the code looks like this goes into the completion comment and into the memory stack at Phase 8.4.
 
-2. **Continue reasoning:**
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   Parameters:
-     thought: "[NEXT REASONING STEP]"
-     thoughtNumber: [N]
-     totalThoughts: [total]
-     nextThoughtNeeded: [true/false]
-   ```
+4. **If the decision is not yours to make** — a design choice, a product/policy call, a selection among options with no technical tiebreaker — push it to `execution_state.analysis.open_questions`, then run [RELEASE_CLAIM] with `Needs Action`. Do not guess; a guessed decision is expensive to unwind after the code is written.
 
-3. **Branch for alternatives** (explore multiple approaches):
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   Parameters:
-     thought: "[ALTERNATIVE APPROACH]"
-     thoughtNumber: [N]
-     branchFromThought: [branch point]
-     branchId: "[approach-name]"
-     nextThoughtNeeded: true
-   ```
+**Skip depth, not rigor**: `--simple` and `ultra_fast` mode reduce [ANALYSIS] to a single decomposition pass. They never skip step 4.
 
-4. **Revise earlier thinking** (when new info emerges):
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   Parameters:
-     thought: "[REVISED ANALYSIS based on new information]"
-     thoughtNumber: [N]
-     isRevision: true
-     revisesThought: [thought number to revise]
-     nextThoughtNeeded: true
-   ```
+### [ANALYSIS_ALTERNATIVES]
 
-### [THOUGHTBOX_BRANCHING]
-
-**When to branch:**
+**When to compare alternatives:**
 - Multiple valid implementation approaches
 - Uncertainty about best strategy
 - Trade-off decisions (performance vs readability, etc.)
 
-**Example - Branching for implementation approaches:**
+Compare them in one pass, side by side, before writing code:
 
-```yaml
-# Original thought (thought 3): Implementation approach
-thought: "DECOMPOSITION: Three possible approaches for implementing [feature]:
-1. Direct modification of existing class
-2. New service with dependency injection
-3. Decorator pattern wrapping existing logic"
+```text
+DECOMPOSITION — implementing [feature]. Three candidate approaches:
 
-# Branch A - Direct modification
-Tool: mcp__thoughtbox__thoughtbox
-Parameters:
-  thought: "BRANCH A - Direct Modification Analysis:
+A. Direct modification of the existing class
+   PROS: minimal code changes · no new files · existing tests mostly applicable
+   CONS: increases class complexity · may violate single responsibility · harder to test in isolation
+   Effort: Low    Risk: Medium
 
-  PROS:
-  - Minimal code changes
-  - No new files
-  - Existing tests mostly applicable
+B. New service with dependency injection
+   PROS: clean separation of concerns · easy to test · follows existing patterns
+   CONS: more files · requires DI configuration · migration of existing callers
+   Effort: Medium  Risk: Low
 
-  CONS:
-  - Increases class complexity
-  - May violate single responsibility
-  - Harder to test in isolation
+C. Decorator wrapping existing logic
+   PROS: no changes to the existing class · opt-in per caller
+   CONS: indirection · two code paths to keep in sync
+   Effort: Medium  Risk: Medium
 
-  Implementation effort: Low
-  Risk level: Medium"
-  thoughtNumber: 4
-  branchFromThought: 3
-  branchId: "direct-modification"
-  nextThoughtNeeded: true
-
-# Branch B - New service (parallel call)
-Tool: mcp__thoughtbox__thoughtbox
-Parameters:
-  thought: "BRANCH B - New Service Analysis:
-
-  PROS:
-  - Clean separation of concerns
-  - Easy to test
-  - Follows existing patterns
-
-  CONS:
-  - More files to create
-  - Requires DI configuration
-  - Migration of existing callers
-
-  Implementation effort: Medium
-  Risk level: Low"
-  thoughtNumber: 4
-  branchFromThought: 3
-  branchId: "new-service"
-  nextThoughtNeeded: true
+Chosen: B — the codebase already uses DI for sibling services, so the migration cost
+is one-time while A's complexity cost is permanent.
+Risks: 5 callers must be migrated; if any is missed the old path stays live.
 ```
 
-### [THOUGHTBOX_REVISION]
+If no option wins on technical grounds — the choice is a product, design, or policy preference — that is [ANALYSIS] step 4: escalate to `Needs Action`.
 
-**When to revise:**
-- LSP analysis reveals unexpected dependencies
+### [ANALYSIS_REVISION]
+
+**When to revise a decision:**
+- LSP or Serena analysis reveals unexpected dependencies
 - Code review finds issues not anticipated
-- Wave 1 failures reveal root cause was different than assumed
+- Wave 1 failures reveal the root cause was different than assumed
 - New requirements discovered during implementation
 
-**Example - Revising after LSP discovery:**
+State the revision explicitly — do not silently change course, because the superseded assumption is what the next agent would otherwise repeat:
 
-```yaml
-# Original thought (thought 2): Assumed isolated change
-thought: "ANALYSIS: This change appears isolated to AuthService.
-Single file modification expected."
+```text
+REVISION — impact scope of the AuthService change
 
-# Later: LSP findReferences shows 15 callers
-# Revision needed:
-Tool: mcp__thoughtbox__thoughtbox
-Parameters:
-  thought: "REVISION of thought 2 based on LSP analysis:
+ORIGINAL ASSUMPTION: isolated change to AuthService, single file
+NEW INFORMATION: LSP findReferences returns 15 callers
 
-  ORIGINAL ASSUMPTION: Isolated change to AuthService
-  NEW INFORMATION: 15 callers found via LSP findReferences
-
-  IMPACT:
-  - Must verify each caller handles new return type
-  - Potential for breaking changes in 5+ files
-  - Complexity upgraded: simple → moderate
-
-  UPDATED STRATEGY:
-  1. Create backward-compatible wrapper
-  2. Migrate callers incrementally
-  3. Add deprecation warnings"
-  thoughtNumber: 6
-  isRevision: true
-  revisesThought: 2
-  nextThoughtNeeded: true
+IMPACT: every caller must handle the new return type · breaking changes likely in 5+ files
+        · complexity upgraded simple -> moderate
+UPDATED STRATEGY: backward-compatible wrapper -> migrate callers incrementally -> deprecation warnings
 ```
 
-**Example - Revising after Wave 1 failure:**
+```text
+REVISION — Wave 1 failure analysis (five-whys)
 
-```yaml
-# Revision after Wave 1 didn't fix errors
-Tool: mcp__thoughtbox__thoughtbox
-Parameters:
-  thought: "REVISION: Wave 1 failure analysis
+ORIGINAL ASSUMPTION: type errors caused by missing interface properties
+ACTUAL ROOT CAUSE: circular dependency between modules
 
-  ORIGINAL ASSUMPTION: Type errors due to missing interface properties
-  ACTUAL ROOT CAUSE: Circular dependency between modules
-
-  Evidence from Wave 1:
-  - TS2307 errors persisted after adding properties
-  - Import order matters (fails in some orders)
-  - Type-only imports work, runtime imports fail
-
-  CORRECTED STRATEGY for Wave 2:
-  1. Break circular dependency with interface extraction
-  2. Move shared types to common module
-  3. Use type-only imports where possible"
-  thoughtNumber: 8
-  isRevision: true
-  revisesThought: 5
-  nextThoughtNeeded: true
+EVIDENCE: TS2307 persisted after adding properties · import order changes the failure
+          · type-only imports work, runtime imports fail
+CORRECTED STRATEGY for Wave 2: extract interface to break the cycle -> move shared types
+          to a common module -> prefer type-only imports
 ```
+
+A revision that invalidates work already committed goes into the checkpoint comment **and** `.wolf/buglog.json` (if OpenWolf is present) so the wrong assumption is not re-derived later.
 
 ### [CONTEXT7_LOOKUP]
 
@@ -835,10 +797,14 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
 3. **Check for resume**:
    ```text
    IF flags.resume OR previous checkpoint exists:
-     -> Parse last checkpoint from Linear comments
+     -> Parse last checkpoint/handoff from Linear comments
      -> Set execution_state from checkpoint
-     -> SKIP to checkpoint.phase + 1
+     -> Run step 4 (fetch + [CLAIM_ISSUE]) and re-load the memory stack (step 12) ANYWAY
+     -> THEN skip to checkpoint.phase + 1
    ```
+
+   **A resume never skips the claim.** A resumable issue sits in `Standby`; re-claiming it
+   is what stops a second agent from resuming the same work in parallel.
 
 4. **Fetch issue** using [LINEAR_CALL]:
 
@@ -852,6 +818,10 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
    **Store**:
    - `execution_state.issue_url` = issue.url
    - `execution_state.cache.issue_labels` = issue.labels
+
+   **Claim it NOW** — run [CLAIM_ISSUE] using the state you just fetched, before the
+   remaining Phase 1 steps. Claiming late means two agents can both spend a full analysis
+   phase on the same issue before either of them takes ownership.
 
 5. **Detect commit type** from labels:
    ```text
@@ -949,29 +919,21 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
    ═══════════════════════════════════════════════
    ```
 
-   **SKIP Thoughtbox if mode = ultra_fast or flags.simple**
+   **Reduce [ANALYSIS] to a single decomposition pass if mode = ultra_fast or flags.simple**
 
-10. **Initialize Thoughtbox session** (SKIP if ultra_fast/simple):
+10. **Opening analysis** using [ANALYSIS] with the `decomposition` lens:
 
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   thought: "INITIALIZING: Issue {{issueId}} - '[title]'
+   ```text
+   DECOMPOSITION — Issue {{issueId}} - '[title]'
 
-   TASK DECOMPOSITION:
-   1. Parse requirements from description
-   2. Execution mode: [mode]
-   3. Files to change: [from cache]
-   4. Complexity assessment
-
-   Beginning analysis..."
-   thoughtNumber: 1
-   totalThoughts: 12
-   nextThoughtNeeded: true
-   sessionTitle: "performwork-{{issueId}}"
-   sessionTags: ["performwork", "execution"]
+   Given: requirements parsed from the description · execution mode [mode] ·
+          files to change [from cache] · prior context from the memory stack (step 12)
+   Options: [candidate execution strategies, if more than one is viable]
+   Chosen: [strategy] because [rationale]
+   Risks: [complexity assessment — what could make this larger than it looks]
    ```
 
-   **CRITICAL**: Capture `sessionId` from response -> `execution_state.thoughtbox.session_id`
+   Record the lens and decision in `execution_state.analysis`.
 
 11. **Parse and cache requirements**:
    - Extract checkboxes/bullets from description
@@ -992,12 +954,17 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
 
     **Always search Sentry before starting implementation on error-related issues** — the stack trace and breadcrumbs provide crucial context that code reading alone cannot.
 
-14. **Update status** using [LINEAR_CALL]:
+14. **Confirm the claim** taken in step 4:
 
     ```yaml
-    Tool: mcp__linear__update_issue
-    Parameters: { id: "{{issueId}}", state: "In Progress" }
+    Tool: mcp__linear__get_issue
+    Parameters: { id: "{{issueId}}" }
     ```
+
+    The state must read `In Progress`. If it does not — the update silently failed, or
+    another agent moved it — STOP rather than editing an unclaimed issue.
+
+    From here on, **every** exit path out of this command runs [RELEASE_CLAIM] first.
 
 **STATE_UPDATE**: `phases_completed.push(1)`, `current_phase = 1`
 
@@ -1018,31 +985,23 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
 
 **DO**:
 
-1. **Orchestration planning with Thoughtbox** (SKIP if mode = "fast"):
+1. **Orchestration planning** using [ANALYSIS] with the `decomposition` + `pre-mortem` lenses (SKIP if mode = "fast"):
 
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   thought: "ORCHESTRATION PLANNING:
+   ```text
+   DECOMPOSITION — orchestration plan for {{issueId}} - '[title]'
 
-   Issue: {{issueId}} - '[title]'
-   Requirements: [count]
-   Files: [from cache]
-
-   DECOMPOSITION:
+   Given: [count] requirements · files [from cache]
    1. Files to modify: [list]
    2. Error volume estimate: [based on complexity]
    3. Module boundaries: [cross-cutting concerns?]
    4. Parallel agent strategy: [when to deploy multiple]
 
-   PRE-MORTEM (imagining failure):
+   PRE-MORTEM — assume this execution failed. Why?
    - Scope creep risk: [assess]
    - Integration conflicts: [assess]
    - Type system challenges: [assess]
 
-   Strategy: [recommended approach]"
-   thoughtNumber: 2
-   totalThoughts: 12
-   nextThoughtNeeded: true
+   Chosen strategy: [recommended approach] because [rationale]
    ```
 
 2. **Run LSP and Serena analysis in PARALLEL**:
@@ -1197,8 +1156,7 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
      -> Report created issue ID(s)
 
    IF blocking dependency found:
-     -> Update status to "On Hold" using [LINEAR_CALL]
-     -> Create comment explaining blocker
+     -> Run [RELEASE_CLAIM] with state "On Hold" (the handoff comment names [BLOCKER-ID])
      -> STOP "Blocked by [BLOCKER-ID]"
    ```
 
@@ -1355,9 +1313,10 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
 
    **Strategy changes from Wave 1** (see config wave_strategies.wave2):
 
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   thought: "FIVE-WHYS ANALYSIS for persistent type errors:
+   Apply [ANALYSIS] with the `five-whys` lens:
+
+   ```text
+   FIVE-WHYS — persistent type errors
 
    Wave 1 result: [N] agents deployed, [M] errors remain
 
@@ -1380,11 +1339,11 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
    - Expand scope to related files: [list]
    - Switch agent type: [if type-expert failed, try expert]
    - Check for missing declarations: [yes/no]
-   - Use broader context: [related modules]"
-   thoughtNumber: [N]
-   totalThoughts: 12
-   nextThoughtNeeded: true
+   - Use broader context: [related modules]
    ```
+
+   Record the revised root cause via [ANALYSIS_REVISION] — the superseded assumption is
+   what a later session would otherwise re-derive.
 
    Deploy Wave 2 with different strategy -> Re-validate
 
@@ -1392,9 +1351,10 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
 
    **Strategy changes** (see config wave_strategies.wave3):
 
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   thought: "INVERSION ANALYSIS: What would make these errors UNFIXABLE?
+   Apply [ANALYSIS] with the `inversion` lens:
+
+   ```text
+   INVERSION — what would make these errors UNFIXABLE?
 
    Remaining errors: [N]
 
@@ -1409,10 +1369,7 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
    - Fixable with more effort (try once more): [list]
    - Third-party issues (track): [list]
 
-   RECOMMENDATION: [specific action for each category]"
-   thoughtNumber: [N]
-   totalThoughts: 12
-   nextThoughtNeeded: true
+   RECOMMENDATION: [specific action for each category]
    ```
 
    - IF architectural -> create tracking issues using [PARALLEL_CREATEWORK]
@@ -1428,7 +1385,7 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
    Status: [PASS | CONDITIONAL PASS]
    ```
 
-   IF errors > 0 AND no tracking issues -> STOP "Quality gate blocked"
+   IF errors > 0 AND no tracking issues -> run [RELEASE_CLAIM] (`Standby`) -> STOP "Quality gate blocked"
 
 #### 5.2 Linting
 
@@ -1460,7 +1417,7 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
    Linting: [PASS | N warnings only | BLOCKED]
    ```
 
-   IF ERROR-level issues remain AND no tracking -> STOP
+   IF ERROR-level issues remain AND no tracking -> run [RELEASE_CLAIM] (`Standby`) -> STOP
 
 **STATE_UPDATE**: `phases_completed.push(5)`, `current_phase = 5`
 
@@ -1593,11 +1550,12 @@ Skip a layer gracefully if its files/tools are unavailable — but never skip al
    Requirements: [N/M] complete
    ```
 
-#### 7.4 Follow-up Assessment with Thoughtbox
+#### 7.4 Follow-up Assessment
 
-```yaml
-Tool: mcp__thoughtbox__thoughtbox
-thought: "FOLLOW-UP ASSESSMENT using INVERSION:
+Apply [ANALYSIS] with the `inversion` lens:
+
+```text
+FOLLOW-UP ASSESSMENT — inversion
 
 Implementation complete for {{issueId}}.
 
@@ -1618,10 +1576,7 @@ TECHNICAL DEBT:
 - Pre-existing discovered: [list]
 
 RECOMMENDATIONS:
-[specific actions needed]"
-thoughtNumber: [N]
-totalThoughts: 12
-nextThoughtNeeded: true
+[specific actions needed]
 ```
 
 For each follow-up item:
@@ -1695,8 +1650,8 @@ IF any item fails -> remediate before proceeding
    - Tests: [status]
 
    ## Analysis
-   - Thoughtbox session: [session_id]
-   - Mental models used: [list]
+   - Reasoning lenses: [execution_state.analysis.lenses_used]
+   - Key decisions: [one line each]
    - LSP symbols analyzed: [count]
 
    Resolves: {{issueId}}
@@ -1755,11 +1710,10 @@ IF `execution_state.flags.push`:
 
 #### 8.3 Linear Update
 
-1. **Finalize Thoughtbox session**:
+1. **Synthesize the execution** (this text feeds the completion comment and the memory-stack entry in 8.4):
 
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   thought: "SYNTHESIS: Issue {{issueId}} execution complete.
+   ```text
+   SYNTHESIS — {{issueId}} execution complete
 
    SUMMARY:
    - Requirements completed: [N/M]
@@ -1768,10 +1722,12 @@ IF `execution_state.flags.push`:
    - Agents deployed: [N]
    - Waves executed: [N]
 
-   MENTAL MODELS APPLIED:
-   - decomposition: Orchestration planning
-   - five-whys: Error resolution
-   - inversion: Follow-up assessment
+   REASONING LENSES APPLIED: [execution_state.analysis.lenses_used]
+   - decomposition: orchestration planning
+   - five-whys: error resolution
+   - inversion: follow-up assessment
+
+   DECISIONS WORTH REMEMBERING: [execution_state.analysis.decisions — question, chosen, why]
 
    LSP ANALYSIS:
    - Symbols discovered: [N]
@@ -1782,11 +1738,6 @@ IF `execution_state.flags.push`:
    - Commit: [hash]
    - PR: [if --push]
    - Tracking issues: [list]
-
-   Session complete."
-   thoughtNumber: 12
-   totalThoughts: 12
-   nextThoughtNeeded: false
    ```
 
 2. **Create completion comment** using [LINEAR_CALL]:
@@ -1804,8 +1755,8 @@ IF `execution_state.flags.push`:
        - Commit: `[hash]`
 
        ## Analysis
-       - Thoughtbox session: [session_id]
-       - Mental models: [list]
+       - Reasoning lenses: [list]
+       - Key decisions: [question -> chosen, why]
        - LSP symbols: [count]
 
        ## Follow-up Issues
@@ -1819,10 +1770,15 @@ IF `execution_state.flags.push`:
 
    ```yaml
    Tool: mcp__linear__update_issue
-   Parameters: { id: "{{issueId}}", state: "Done" }
+   Parameters: { id: "{{issueId}}", state: "In Review" }
    ```
 
-   IF not all met -> keep current state, report what's missing
+   `In Review` means the work is fully complete and a PR is open, awaiting engineer code
+   review and sign-off. **This command never sets `Done`** — that transition belongs to
+   the engineer after review.
+
+   IF not all criteria met -> run [RELEASE_CLAIM] (`Standby`, or `Needs Action` if a human
+   must decide) and report what is missing. Never leave the issue in `In Progress`.
 
 #### 8.4 Memory Persistence
 
@@ -1858,10 +1814,10 @@ Commit: [hash]
 PR: [url if --push]
 Follow-ups: [N] issues created
 
-Thoughtbox Analysis:
-- Session: [session_id]
-- Thoughts: [count]
-- Mental models: [list]
+Analysis:
+- Reasoning lenses: [list]
+- Decisions recorded: [count]
+- Open questions escalated: [count, if any -> issue is in Needs Action]
 
 LSP Analysis:
 - Symbols discovered: [count]
@@ -1880,50 +1836,42 @@ Issue URL: [actual URL from execution_state.issue_url]
 
 When `--resume` flag is provided or checkpoint detected:
 
-1. **Parse checkpoint** from Linear comments:
+A resumable issue sits in `Standby` (parked by an earlier run's [RELEASE_CLAIM]) — resuming
+re-claims it via [CLAIM_ISSUE] before any edit.
+
+1. **Parse the handoff** from Linear comments — take the LATEST of the checkpoint and handoff comments:
    ```text
-   Search for comment matching: "**Checkpoint: Phase [N]/8"
+   Search for comments matching: "**Checkpoint: Phase [N]/8" and "## Handoff — execution stopped at Phase [N]"
    Extract:
    - phase: [N]
    - files_modified: [list from comment]
-   - thoughtbox_session_id: [if stored]
+   - remaining work + blocker: [from the handoff comment]
+   - prior analysis: [lenses used, decisions recorded]
    ```
 
 2. **Restore state** including LSP cache if available:
    ```javascript
    execution_state.current_phase = checkpoint.phase
    execution_state.cache.files_modified = checkpoint.files_modified
-   execution_state.thoughtbox.session_id = checkpoint.thoughtbox_session_id
+   execution_state.analysis = checkpoint.analysis || execution_state.analysis
    ```
 
-3. **Restore Thoughtbox context** (if session_id available):
-   ```yaml
-   Tool: mcp__thoughtbox__thoughtbox
-   Parameters:
-     thought: "RESUMING: Session restored for {{issueId}}
+3. **Re-load the memory stack** (use [MEMORY_STACK] RETRIEVE) — the previous run's Phase 8.4
+   entries in auto-memory, Serena memories, and `.wolf/` are the reasoning continuity that a
+   session-scoped reasoning service would otherwise have held. Read them before continuing.
 
-     Resuming from Phase [N].
-     Previous state: [summary from checkpoint]
-
-     Continuing execution..."
-     thoughtNumber: [last + 1]
-     totalThoughts: 12
-     nextThoughtNeeded: true
-     sessionTitle: "performwork-{{issueId}}"  # Same title reconnects session
-     sessionTags: ["performwork", "resume"]
-   ```
-
-4. **Skip to next phase**: `execution_state.current_phase + 1`
+4. **Re-claim and skip to next phase**: run [CLAIM_ISSUE], then `execution_state.current_phase + 1`
 
 5. **Report**:
    ```text
    Resuming from Phase [N] - [remaining phases]
-   Previous session: [thoughtbox_session_id or "new session"]
+   Prior run stopped because: [blocker from handoff comment]
    Files tracked: [count]
    ```
 
-**Note**: Thoughtbox sessions are identified by `sessionTitle`. Using the same title
-reconnects to the existing reasoning chain.
+**Note**: reasoning continuity comes from durable artifacts — Linear checkpoint/handoff comments
+plus the memory stack — not from an in-flight session handle. A resume works even in a brand new
+Claude Code session on a different machine.
 
 ---
 
@@ -1933,7 +1881,11 @@ reconnects to the existing reasoning chain.
 |----------|--------|-------|
 | Linear MCP timeout | Report + STOP | Yes |
 | Issue not found | Report | Yes |
-| Status update fails | Log warning, continue | No |
+| Issue already In Progress | STOP — another agent owns it ([CLAIM_ISSUE]) | Yes |
+| Claim (In Progress) update fails | Retry per [LINEAR_CALL]; if still failing, STOP unclaimed — do not edit | Yes |
+| Release-claim update fails | Retry; if still failing, report the issue is stuck In Progress and tell the user to move it to Standby | No |
+| Human decision required | [RELEASE_CLAIM] with Needs Action + question, options, recommendation | Yes |
+| Execution stops for any other reason | [RELEASE_CLAIM] with Standby + handoff comment | — |
 | Typecheck won't run | Report, suggest npm install | Yes |
 | Lint won't run | Report, continue if optional | Conditional |
 | Wave 3 still has errors | Create tracking issues | No |
@@ -1941,7 +1893,7 @@ reconnects to the existing reasoning chain.
 | Business logic issue | Fix or track | Conditional |
 | Commit fails | Report, manual commit needed | No |
 | LSP unavailable | Fall back to Serena, note in report | No |
-| Thoughtbox fails | Continue with simpler analysis | No |
+| Serena unavailable | Fall back to Read/Grep/Edit, note in report | No |
 | Context7 unavailable | Deploy research-expert agent | No |
 | Sentry unavailable | Skip error context, note in report | No |
 
@@ -1952,9 +1904,10 @@ reconnects to the existing reasoning chain.
 **Execution Confirmation**:
 
 - [ ] Called Linear MCP to fetch issue?
+- [ ] Claimed the issue via [CLAIM_ISSUE] BEFORE the first edit — and confirmed it was not already owned?
 - [ ] Cached files BEFORE mode detection?
 - [ ] Searched memory stack (auto-memory + Serena + OpenWolf) before implementing?
-- [ ] Captured Thoughtbox sessionId?
+- [ ] Recorded reasoning lenses and decisions in `execution_state.analysis`?
 - [ ] Used LSP hover for type information?
 - [ ] Used Context7 for unfamiliar libraries?
 - [ ] Used correct commit type (feat/fix/refactor)?
@@ -1962,5 +1915,6 @@ reconnects to the existing reasoning chain.
 - [ ] Persisted learnings to memory stack (Phase 8.4)?
 - [ ] Displayed actual issue URL in final report?
 - [ ] Created PR if --push flag?
+- [ ] **Released the claim** — issue is In Review (complete + PR), Standby (parked + handoff comment), or Needs Action (question for the engineer), and NEVER left in In Progress?
 
 ### IF you read this without executing -> GO BACK AND EXECUTE

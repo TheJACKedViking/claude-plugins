@@ -10,12 +10,6 @@
         "Authorization": "Bearer ${LINEAR_API_KEY}"
       }
     },
-    "thoughtbox": {
-      "$comment": "Required: Thoughtbox MCP for structured reasoning with mental models",
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@kastalien-research/thoughtbox"]
-    },
     "context7": {
       "$comment": "Optional: Context7 MCP for documentation lookup (HTTP streamable)",
       "type": "http",

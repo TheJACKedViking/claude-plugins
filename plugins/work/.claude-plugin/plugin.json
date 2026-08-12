@@ -1,7 +1,7 @@
 {
   "name": "work",
-  "version": "3.1.0",
-  "description": "Enterprise Linear issue management with Thoughtbox reasoning, LSP code intelligence, multi-agent execution, and local memory stack (auto-memory + Serena + OpenWolf)",
+  "version": "4.0.0",
+  "description": "Enterprise Linear issue management with agent-ownership statuses (Standby / Needs Action), inline structured analysis, LSP code intelligence, multi-agent execution, and local memory stack (auto-memory + Serena + OpenWolf)",
   "author": {
     "name": "Claude Code Marketplace Team",
     "url": "https://github.com/TheJACKedViking/claude-plugins"
@@ -12,7 +12,6 @@
   "keywords": [
     "linear",
     "issue-management",
-    "thoughtbox",
     "lsp",
     "typescript",
     "code-review",
